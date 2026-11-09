@@ -965,7 +965,7 @@ const DEFAULT_MISSION_AUDIO = {
   'STAR I': {
     entries:        [{ url: getWbUrl('WB120') }, { url: getWbUrl('WB121') }].filter(e => e.url),
     lookingBackUrls:[getWbUrl('WB122')].filter(Boolean),
-    relaxingUrls:   [getWbUrl('WB123'), getWbUrl('WB124'), getWbUrl('WB125')].filter(Boolean),
+    relaxingUrls:   [getWbUrl('WB123'), getWbUrl('WB124'), getWbUrl('WB125'), getWbUrl('WB126')].filter(Boolean),
   },
   ASK: {
     entries:        [{ url: getWbUrl('WB130') }, { url: getWbUrl('WB131') }].filter(e => e.url),
