@@ -701,7 +701,7 @@ const WB_AUDIO_URLS = {
   WB123: 'https://youtu.be/KaqNNBO66Bg',
   WB124: 'https://youtu.be/kuNVhTNGYBo',
   WB125: 'https://youtu.be/HpNXqbv9hAQ',
-  WB130: 'https://youtu.be/ejjbyjxXUD0',
+  WB130: 'https://www.youtube.com/watch?v=HpNXqbv9hAQ',
   WB131: 'https://youtu.be/gbFyjsRKJUc',
   WB132: 'https://youtu.be/Dbc0k-sckLQ',
   WB140: 'https://youtu.be/sKEsGooW-1c',
