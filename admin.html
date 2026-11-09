@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>떠나찾 관리자</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: #f0f2f5; color: #333; font-size: 14px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    body::-webkit-scrollbar { display: none; }
+
+    /* ── 로그인 화면 ── */
+    #auth-screen { position: fixed; inset: 0; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .auth-box { background: white; border-radius: 20px; padding: 44px 40px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .auth-logo { font-size: 42px; margin-bottom: 12px; }
+    .auth-box h1 { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
+    .auth-box p { color: #999; font-size: 13px; margin-bottom: 28px; }
+    .auth-box input { width: 100%; padding: 13px 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; outline: none; transition: border-color .2s; }
+    .auth-box input:focus { border-color: #7BC74E; }
+    .btn-login { margin-top: 14px; width: 100%; padding: 14px; background: #7BC74E; color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .2s; letter-spacing: .3px; }
+    .btn-login:hover { background: #5ea832; }
+    .auth-error { color: #e53e3e; font-size: 12px; margin-top: 10px; min-height: 18px; }
+    .auth-hint { margin-top: 18px; font-size: 11px; color: #bbb; }
+
+    /* ── 앱 레이아웃 ── */
+    #admin-app { min-height: 100vh; display: flex; flex-direction: column; }
+    .admin-header { background: #1a1a2e; color: white; padding: 0 24px; height: 58px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+    .admin-header h1 { font-size: 17px; font-weight: 800; letter-spacing: .3px; }
+    .admin-header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-back { color: #aaa; text-decoration: none; font-size: 12px; padding: 6px 14px; border: 1px solid #3a3a5c; border-radius: 8px; transition: all .2s; }
+    .btn-back:hover { color: white; border-color: #888; }
+    .btn-logout { background: transparent; color: #aaa; border: 1px solid #3a3a5c; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: all .2s; }
+    .btn-logout:hover { color: white; border-color: #888; }
+
+    /* ── 탭 네비 ── */
+    .admin-tabs { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+    .admin-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { padding: 16px 18px; border: none; background: transparent; font-size: 14px; font-weight: 500; color: #999; cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s; white-space: nowrap; font-family: inherit; }
+    .tab-btn.active { color: #7BC74E; border-bottom-color: #7BC74E; font-weight: 700; }
+    .tab-btn:hover:not(.active) { color: #555; }
+
+    /* ── 메인 콘텐츠 ── */
+    .admin-content { flex: 1; padding: 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+    /* ── 카드 ── */
+    .section-card { background: white; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+    .section-card h2 { font-size: 15px; font-weight: 700; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
+
+    /* ── 버튼 ── */
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; font-family: inherit; }
+    .btn-primary { background: #7BC74E; color: white; }
+    .btn-primary:hover { background: #5ea832; }
+    .btn-secondary { background: #f0f2f5; color: #555; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 6px; }
+
+    /* ── 툴바 ── */
+    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+
+    /* ── 테이블 ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; color: #777; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+    .data-table td { padding: 11px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #fafafa; }
+    .action-cell { white-space: nowrap; }
+
+    /* ── 뱃지 ── */
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-gray { background: #f0f2f5; color: #888; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+
+    /* ── 빈 상태 ── */
+    .empty-state { text-align: center; padding: 40px 20px; color: #bbb; font-size: 13px; }
+
+    /* ── 폼 ── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 10px 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; outline: none; transition: border-color .2s; background: white; font-family: inherit; color: #333;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #7BC74E; }
+    .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    .form-group input[readonly] { background: #f9fafb; color: #999; }
+
+    /* ── URL 리스트 ── */
+    .url-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .url-item { display: flex; gap: 6px; align-items: center; }
+    .url-item .url-input { flex: 2; margin: 0; }
+    .url-item .text-input { flex: 1; margin: 0; font-size: 13px; background: #f0f7ff; border-color: #93c5fd; color: #1e40af; }
+    .url-item .text-input::placeholder { color: #a5b4fc; }
+    .btn-remove-url { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: none; background: #fee2e2; color: #dc2626; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+    .btn-remove-url:hover { background: #fecaca; }
+    .mission-actions { display: flex; gap: 6px; margin-top: 4px; }
+
+    /* ── 미션 목록 ── */
+    .mission-category { margin-bottom: 28px; }
+    .mission-category-title { font-size: 11px; font-weight: 800; color: #7BC74E; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #dcfce7; text-transform: uppercase; letter-spacing: 1px; }
+    .mission-row { background: #f9fafb; border-radius: 10px; margin-bottom: 6px; border: 1.5px solid transparent; transition: border-color .2s; }
+    .mission-row.expanded { border-color: #7BC74E; background: white; }
+    .mission-row-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; }
+    .mission-row-title { font-size: 13px; font-weight: 600; color: #333; }
+    .mission-row-meta { display: flex; align-items: center; gap: 10px; }
+    .mission-row-status { font-size: 11px; color: #bbb; font-weight: 600; }
+    .mission-row-status.has-url { color: #7BC74E; }
+    .mission-row-chevron { font-size: 10px; color: #bbb; transition: transform .2s; }
+    .mission-row.expanded .mission-row-chevron { transform: rotate(180deg); }
+    .mission-row-body { display: none; padding: 0 16px 16px; border-top: 1px solid #f0f2f5; margin: 0 0; }
+    .mission-row.expanded .mission-row-body { display: block; padding-top: 16px; }
+    .mission-row-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    /* ── 검색창 ── */
+    .search-bar { position: relative; margin-bottom: 18px; }
+    .search-bar input { padding-left: 38px; }
+    .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #bbb; font-size: 15px; pointer-events: none; }
+
+    /* ── 모달 ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-box { background: white; border-radius: 18px; padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 16px 50px rgba(0,0,0,.2); }
+    .modal-box h3 { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 22px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid #f0f2f5; }
+
+    /* ── 데이터 관리 ── */
+    .data-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .danger-zone { border: 2px dashed #fca5a5; border-radius: 10px; padding: 16px; margin-top: 10px; }
+
+    /* ── 비밀번호 섹션 ── */
+    .pw-form { max-width: 340px; }
+
+    /* ── 토스트 ── */
+    #toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(0); background: #1a1a2e; color: white; padding: 12px 26px; border-radius: 30px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+    #toast.show { opacity: 1; }
+
+    /* ── 유틸 ── */
+    .hidden { display: none !important; }
+    .mt-8 { margin-top: 8px; }
+    .text-muted { color: #999; font-size: 12px; margin-bottom: 16px; line-height: 1.6; }
+
+    @media (max-width: 600px) {
+      .admin-content { padding: 16px; }
+      .section-card { padding: 18px 16px; }
+      .data-table th:nth-child(3), .data-table td:nth-child(3),
+      .data-table th:nth-child(4), .data-table td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ 로그인 화면 ══════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">🗂</div>
+    <h1>떠나찾 관리자</h1>
+    <p>콘텐츠, 미션 음원, 게시물을 관리합니다</p>
+    <input type="password" id="pw-input" placeholder="비밀번호 입력">
+    <button class="btn-login" onclick="login()">로그인</button>
+    <div class="auth-error" id="pw-error"></div>
+    <div class="auth-hint" id="auth-hint">기본 비밀번호: admin1234</div>
+  </div>
+</div>
+
+<!-- ══════════ 관리자 앱 ══════════ -->
+<div id="admin-app" class="hidden">
+
+  <!-- file:// 프로토콜 경고 배너 -->
+  <div id="file-protocol-warning" style="display:none; background:#c0392b; color:#fff; padding:12px 20px; font-size:13px; align-items:center; gap:12px; flex-wrap:wrap;">
+    <span>⚠️ <strong>주의:</strong> 이 페이지가 <code>file://</code> 프로토콜로 열려 있습니다. 이 경우 관리자 페이지에서 저장한 링크가 앱에 적용되지 않습니다.</span>
+    <span>반드시 로컬 서버(<code>http://localhost:8080/admin.html</code>)를 통해 접속하세요.</span>
+  </div>
+
+  <header class="admin-header">
+    <h1>🗂 떠나찾 관리자</h1>
+    <div class="admin-header-actions">
+      <a href="index.html" class="btn-back">← 앱으로 돌아가기</a>
+      <button class="btn-logout" onclick="logout()">로그아웃</button>
+    </div>
+  </header>
+
+  <nav class="admin-tabs">
+    <button class="tab-btn active" onclick="showTab('contents')">📋 콘텐츠 관리</button>
+    <button class="tab-btn" onclick="showTab('missions')">🎵 미션 음원</button>
+    <button class="tab-btn" onclick="showTab('posts')">📝 게시물 관리</button>
+    <button class="tab-btn" onclick="showTab('data')">💾 데이터 관리</button>
+  </nav>
+
+  <div class="admin-content">
+
+    <!-- ── 콘텐츠 관리 탭 ── -->
+    <section id="tab-contents">
+      <div class="section-card">
+        <div class="toolbar">
+          <h2>📋 콘텐츠 목록</h2>
+          <button class="btn btn-primary" onclick="openAddContent()">+ 새 콘텐츠 추가</button>
+        </div>
+        <p class="text-muted">앱의 라이팅/녹음/드로잉 파트에 표시되는 콘텐츠를 관리합니다. 유튜브 링크를 설정하면 콘텐츠 상세에서 온라인 재생이 됩니다.</p>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>한글 제목</th>
+                <th>표시 제목</th>
+                <th>테마</th>
+                <th>음원</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="contents-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 미션 음원 탭 ── -->
+    <section id="tab-missions" class="hidden">
+      <div class="section-card" id="origin-status-card" style="border:2px solid #e5e7eb; padding:14px 18px; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="origin-status-icon" style="font-size:18px;">⏳</span>
+          <span id="origin-status-msg" style="font-size:13px; color:#555;">현재 접속 주소를 확인 중...</span>
+          <span style="margin-left:auto; font-size:12px; color:#999;" id="origin-display"></span>
+        </div>
+      </div>
+      <div class="section-card">
+        <h2 style="margin-bottom:10px">🎵 미션 음원 관리</h2>
+        <p class="text-muted">각 미션의 유튜브 음원 링크를 설정합니다. 링크가 없으면 <code>assets/audio</code> 폴더의 mp3 파일을 사용합니다.<br>
+        <b>본활동 링크</b>는 미션 진행 중 재생되고, <b>돌아보기 링크</b>는 Looking Back 단계에서 재생됩니다.</p>
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="mission-search" placeholder="미션 이름으로 검색..." oninput="filterMissions()">
+        </div>
+        <div id="missions-list"></div>
+      </div>
+    </section>
+
+    <!-- ── 게시물 관리 탭 ── -->
+    <section id="tab-posts" class="hidden">
+      <div class="section-card">
+        <h2 style="margin-bottom:16px">📝 게시물 목록</h2>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>제목</th>
+                <th>날짜</th>
+                <th>좋아요</th>
+                <th>음원</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="posts-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 데이터 관리 탭 ── -->
+    <section id="tab-data" class="hidden">
+      <div class="section-card">
+        <h2 style="margin-bottom:10px">📝 오늘의 한 문장</h2>
+        <p class="text-muted">메인 화면 하단에 표시되는 문구를 추가합니다. 기본 문구에 더해 추가한 문구가 매일 순환되어 표시됩니다.</p>
+        <div class="pw-form">
+          <div class="form-group">
+            <label>한국어 문장</label>
+            <input type="text" id="daily-quote-ko" placeholder="예: 오늘 하루, 나를 위한 시간을 가져보세요.">
+          </div>
+          <div class="form-group">
+            <label>영어 문장</label>
+            <input type="text" id="daily-quote-en" placeholder="예: Take a little time for yourself today.">
+          </div>
+          <button class="btn btn-primary" onclick="addDailyQuote()">문장 추가</button>
+        </div>
+        <div class="daily-quotes-list" id="daily-quotes-list" style="margin-top:16px">
+          <!-- 동적 생성 -->
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h2 style="margin-bottom:10px">🔗 공유하기 링크</h2>
+        <p class="text-muted">콘텐츠 상세에서 공유하기 버튼을 누르면 이동할 URL과 안내 문구를 설정합니다.</p>
+        <div class="pw-form">
+          <div class="form-group">
+            <label>공유 링크 URL</label>
+            <input type="url" id="share-link-input" placeholder="https://example.com/share">
+          </div>
+          <div class="form-group">
+            <label>공유하기 안내 텍스트</label>
+            <input type="text" id="share-link-text-input" placeholder="해당 링크로 이동하시겠습니까?">
+            <small class="text-muted">공유하기 버튼 클릭 시 확인 창에 표시되는 문구입니다. 비워두면 기본 문구가 사용됩니다.</small>
+          </div>
+          <button class="btn btn-primary" onclick="saveShareLink()">저장</button>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h2 style="margin-bottom:10px">💾 데이터 내보내기 / 가져오기</h2>
+        <p class="text-muted">앱의 모든 데이터를 JSON 파일로 백업하거나, 이전에 저장한 파일을 불러옵니다.</p>
+        <div class="data-actions">
+          <button class="btn btn-secondary" onclick="exportData()">📥 데이터 내보내기</button>
+          <label class="btn btn-secondary" style="cursor:pointer">
+            📤 데이터 가져오기
+            <input type="file" accept=".json" onchange="importData(event)" style="display:none">
+          </label>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h2 style="margin-bottom:16px">🔑 비밀번호 변경</h2>
+        <div class="pw-form">
+          <div class="form-group">
+            <label>새 비밀번호</label>
+            <input type="password" id="new-pw" placeholder="새 비밀번호 입력">
+          </div>
+          <div class="form-group">
+            <label>비밀번호 확인</label>
+            <input type="password" id="confirm-pw" placeholder="비밀번호 재입력">
+          </div>
+          <button class="btn btn-primary" onclick="changePassword()">비밀번호 변경</button>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <h2 style="color:#dc2626; margin-bottom:10px">⚠️ 데이터 초기화</h2>
+        <p class="text-muted">데이터를 초기 상태로 되돌립니다. 되돌릴 수 없으니 신중하게 사용하세요.</p>
+        <div class="danger-zone">
+          <div class="data-actions">
+            <button class="btn btn-danger" onclick="resetContents()">콘텐츠 초기화</button>
+            <button class="btn btn-danger" onclick="resetPosts()">게시물 초기화</button>
+            <button class="btn btn-danger" onclick="resetMissionAudio()">미션 음원 초기화</button>
+            <button class="btn btn-danger" style="background:#dc2626;color:white" onclick="resetAll()">전체 초기화</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /admin-content -->
+</div><!-- /admin-app -->
+
+<!-- ══════════ 콘텐츠 편집 모달 ══════════ -->
+<div class="modal-overlay hidden" id="content-modal">
+  <div class="modal-box">
+    <h3 id="content-modal-title">콘텐츠 추가</h3>
+    <input type="hidden" id="content-edit-id">
+    <div class="form-group">
+      <label>ID (고유값 · 수정 불가)</label>
+      <input type="text" id="content-edit-idfield" placeholder="예: 3">
+    </div>
+    <div class="form-group">
+      <label>한글 제목 (내부용)</label>
+      <input type="text" id="content-edit-title" placeholder="예: 신문을 받았을 때의 기분">
+    </div>
+    <div class="form-group">
+      <label>표시 제목 (displayTitle)</label>
+      <input type="text" id="content-edit-displaytitle" placeholder="예: LETTER - 미안해/고마워 편지">
+    </div>
+    <div class="form-group">
+      <label>테마 (theme)</label>
+      <input type="text" id="content-edit-theme" placeholder="예: LETTER">
+    </div>
+    <div class="form-group">
+      <label>설명</label>
+      <textarea id="content-edit-desc" placeholder="예: 미안하다, 고맙다 말하고 싶은&#10;사람에게 음성편지 보내기"></textarea>
+    </div>
+    <div class="form-group">
+      <label>유튜브 음원 링크</label>
+      <div class="url-list" id="content-audio-urls"></div>
+      <button class="btn btn-secondary btn-sm mt-8" onclick="addContentUrlInput()">+ 링크 추가</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeContentModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveContent()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 게시물 편집 모달 ══════════ -->
+<div class="modal-overlay hidden" id="post-modal">
+  <div class="modal-box">
+    <h3>게시물 편집</h3>
+    <input type="hidden" id="post-edit-id">
+    <div class="form-group">
+      <label>제목</label>
+      <input type="text" id="post-edit-title">
+    </div>
+    <div class="form-group">
+      <label>내용</label>
+      <textarea id="post-edit-body" style="min-height:120px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>유튜브 음원 링크</label>
+      <div class="url-list" id="post-audio-urls"></div>
+      <button class="btn btn-secondary btn-sm mt-8" onclick="addPostUrlInput()">+ 링크 추가</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePostModal()">취소</button>
+      <button class="btn btn-primary" onclick="savePost()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 토스트 ══════════ -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// 상수 & 기본 데이터
+// ═══════════════════════════════════════════
+const ADMIN_PW_KEY = 'contique_admin_pw';
+const DEFAULT_PW   = 'admin1234';
+
+const STORAGE = {
+  contents:     'contique_contents',
+  posts:        'contique_posts',
+  missionAudio: 'contique_mission_audio',
+  activities:   'contique_activities',
+  splashDone:   'contique_splash_done',
+  shareLink:    'contique_share_link',
+  shareLinkText:'contique_share_link_text',
+  dailyQuotes:  'contique_daily_quotes',
+};
+
+const DEFAULT_CONTENTS = [
+  { id: '1', title: '신문을 받았을 때의 기분', displayTitle: 'LETTER - 미안해/고마워 편지', theme: 'LETTER',
+    description: '미안하다, 고맙다 말하고 싶은\n사람에게 음성편지 보내기', recordings: [], hasUnrecorded: true, audioUrls: [] },
+  { id: '2', title: '선물을 준 이유 추측', theme: 'TIME AND MONEY',
+    description: '시간과 돈에 대한 생각을 나눠보세요.', recordings: [], hasUnrecorded: true, audioUrls: [] },
+];
+
+const DEFAULT_POSTS = [
+  { id: 'p1', contentId: '1', title: 'LETTER - 미안해/고마워 편지',
+    body: '미안하다, 고맙다 말하고 싶은 사람에게 음성편지 보내기',
+    likes: 14, date: '2026/02/28', comments: [], photos: [], audioUrls: [] },
+  { id: 'p2', contentId: '2', title: 'TIME AND MONEY - LOOKING BACK',
+    body: '저는 시간보다 돈을 더 아껴 쓰는 편이라는 걸 알게됐어요.',
+    likes: 8, date: '2026/02/27', comments: [], photos: [], audioUrls: [] },
+  { id: 'p3', contentId: '3', title: 'FOND - 넘나 좋은 것',
+    body: '나를 사랑하는 마음으로 내가 좋아하는 것들을 스스로 자주 선물해줘야겠다는 생각',
+    likes: 5, date: '2026/02/26', comments: [], photos: [] },
+];
+
+const MISSION_LIST = [
+  // 힐링 레코딩
+  { id: 'VOICE',          title: 'VOICE - 최고의 악기, 내 목소리',   cat: '힐링 레코딩' },
+  { id: 'MYSELF',         title: 'MYSELF - 나는 이런 사람',          cat: '힐링 레코딩' },
+  { id: 'TODAY',          title: 'TODAY - 나의 하루는',              cat: '힐링 레코딩' },
+  { id: 'DIARY',          title: 'DIARY - Good and Bad',            cat: '힐링 레코딩' },
+  { id: 'POINT',          title: 'POINT - 힐링포인트',               cat: '힐링 레코딩' },
+  { id: 'LIST',           title: 'LIST - 버킷리스트',                cat: '힐링 레코딩' },
+  { id: 'TIME AND MONEY', title: 'TIME AND MONEY - 나의 시간과 돈',  cat: '힐링 레코딩' },
+  { id: 'FOND',           title: 'FOND - 넘나 좋은 것',              cat: '힐링 레코딩' },
+  { id: 'DISLIKE',        title: 'DISLIKE - 쫌 그래',                cat: '힐링 레코딩' },
+  { id: 'REMAIN',         title: 'REMAIN - 기억 속 그 감정',         cat: '힐링 레코딩' },
+  { id: 'EMOTION',        title: 'EMOTION - 감정일기',               cat: '힐링 레코딩' },
+  { id: 'PARTNER',        title: 'PARTNER - 당신은 나의 동반자',      cat: '힐링 레코딩' },
+  { id: 'ONCE',           title: 'ONCE - 그때 그 사람',              cat: '힐링 레코딩' },
+  { id: 'SUPPORT',        title: 'SUPPORT - 살짝 기대도 돼',          cat: '힐링 레코딩' },
+  { id: 'LETTER',         title: 'LETTER - 미안해/고마워 편지',       cat: '힐링 레코딩' },
+  // 힐링 라이팅 (파트1)
+  { id: 'ALONG',    title: 'ALONG - WRITE ALONG',           cat: '힐링 라이팅' },
+  { id: 'STAR I',   title: 'STAR I - 나의 별',               cat: '힐링 라이팅' },
+  { id: 'NAME',     title: 'NAME - 나의 이름은',              cat: '힐링 라이팅' },
+  { id: 'ABOUT',    title: 'ABOUT - 나는 이런 사람',          cat: '힐링 라이팅' },
+  { id: 'REPLY',    title: 'REPLY - 답장쓰기',               cat: '힐링 라이팅' },
+  { id: 'MAKE',     title: 'MAKE - 만들어보기',               cat: '힐링 라이팅' },
+  { id: 'COMPLETE', title: 'COMPLETE - 완성하기',             cat: '힐링 라이팅' },
+  { id: 'THINGS',   title: 'THINGS - 좋아하는 것들',          cat: '힐링 라이팅' },
+  { id: 'ASK',      title: 'ASK - ASK ME',                  cat: '힐링 라이팅' },
+  { id: '3 LINES',  title: '3 LINES - 3줄 쓰기',             cat: '힐링 라이팅' },
+  { id: 'ANY',      title: 'ANY - 아무거나',                  cat: '힐링 라이팅' },
+  { id: 'MEMO',     title: 'MEMO - 메모하기',                 cat: '힐링 라이팅' },
+  { id: 'STAR II',  title: 'STAR II - 두 번째 별',            cat: '힐링 라이팅' },
+  { id: '5 LINES',  title: '5 LINES - 5줄 쓰기',             cat: '힐링 라이팅' },
+  { id: 'LYRICS',   title: 'LYRICS - 가사 필사',              cat: '힐링 라이팅' },
+  // 힐링 라이팅 (기타)
+  { id: 'WORDS',    title: 'WORDS - 어울리는 단어',           cat: '힐링 라이팅' },
+  { id: 'DAY',      title: 'DAY - 하루 일과',                cat: '힐링 라이팅' },
+  { id: 'BRAIN',    title: 'BRAIN - 내 머릿속 구름',         cat: '힐링 라이팅' },
+  { id: 'HARD',     title: 'HARD - 힘들었지?',               cat: '힐링 라이팅' },
+  { id: 'GIFT',     title: 'GIFT - GIVE & TAKE',             cat: '힐링 라이팅' },
+  { id: 'RELATION', title: 'RELATION - 나는 의 ㅁㅁOO',      cat: '힐링 라이팅' },
+  { id: 'FRIEND',   title: 'FRIEND - 친구란 _______',        cat: '힐링 라이팅' },
+  { id: 'TRIP',     title: 'TRIP - 나랑 여행갈까?',           cat: '힐링 라이팅' },
+  { id: 'SAY',      title: 'SAY - 내일은 늦으리',             cat: '힐링 라이팅' },
+  { id: 'HOPE',     title: 'HOPE - 짜아식 잘 컸구, 나',       cat: '힐링 라이팅' },
+  { id: 'LIST_W',   title: 'LIST - 버킷리스트 (라이팅)',       cat: '힐링 라이팅' },
+  { id: 'DIARY_W',  title: 'DIARY - 감정일기 (라이팅)',        cat: '힐링 라이팅' },
+  { id: 'FLEX',     title: 'FLEX - 플렉스',                  cat: '힐링 라이팅' },
+  { id: 'NEWME_W',  title: 'NEWME - 다시, 나는 이런 사람',     cat: '힐링 라이팅' },
+  { id: 'HALF',     title: 'HALF - 반반',                    cat: '힐링 라이팅' },
+  { id: 'ONE_W',         title: 'ONE - 하나 (라이팅)',             cat: '힐링 라이팅' },
+  { id: 'WISH',         title: 'WISH - 바라는 것',               cat: '힐링 라이팅' },
+  { id: 'TRASHCAN',     title: 'TRASHCAN - 버리기',              cat: '힐링 라이팅' },
+  { id: 'LOOKING BACK', title: 'LOOKING BACK - 돌아보기',        cat: '힐링 라이팅' },
+  { id: 'SQUARE',   title: 'SQUARE - 네모',                  cat: '힐링 라이팅' },
+  { id: 'PACK',     title: 'PACK - 짐 꾸리기',               cat: '힐링 라이팅' },
+  { id: 'PHOTO',    title: 'PHOTO - 사진',                   cat: '힐링 라이팅' },
+  { id: 'PLAN',     title: 'PLAN - 계획',                    cat: '힐링 라이팅' },
+  { id: 'SCRIBBLE', title: 'SCRIBBLE - 낙서 (릴렉싱)',       cat: '힐링 라이팅' },
+  // 힐링 드로잉
+  { id: 'MUSIC',    title: 'MUSIC - 음악도형',               cat: '힐링 드로잉' },
+  { id: 'PAINT',    title: 'PAINT - 가볍게 색칠',            cat: '힐링 드로잉' },
+  { id: 'COLOR',    title: 'COLOR - 무슨 색일까',            cat: '힐링 드로잉' },
+  { id: 'ONE',      title: 'ONE - 특정 컬러만 사용',         cat: '힐링 드로잉' },
+  { id: 'Favorite', title: 'FAVORITE - 내가 좋아하는 것',    cat: '힐링 드로잉' },
+  { id: 'JANUS',    title: 'JANUS - 나는 이런 사람',         cat: '힐링 드로잉' },
+  { id: 'IF',       title: 'IF - 내가 만약',                cat: '힐링 드로잉' },
+  { id: 'SQUARE_D',  title: 'SQUARE - 네모 (드로잉 릴렉싱)',     cat: '힐링 드로잉' },
+  { id: 'CIRCLE',   title: 'CIRCLE - 동그라미 (드로잉 릴렉싱)', cat: '힐링 드로잉' },
+  { id: 'ROAD',     title: 'ROAD - 길 그리기',                 cat: '힐링 드로잉' },
+  { id: 'FACE',     title: 'FACE - 얼굴 그리기',               cat: '힐링 드로잉' },
+  { id: 'TRIP_D',   title: 'TRIP - 여행 (드로잉)',              cat: '힐링 드로잉' },
+  { id: 'OCTAGON',  title: 'OCTAGON - 팔각형 (드로잉 릴렉싱)',  cat: '힐링 드로잉' },
+  { id: 'STAR_D',   title: 'STAR - 별 (드로잉 릴렉싱)',         cat: '힐링 드로잉' },
+  { id: 'TRIANGLE', title: 'TRIANGLE - 삼각형 (드로잉 릴렉싱)', cat: '힐링 드로잉' },
+  { id: 'SINKHOLE', title: 'SINKHOLE - 싱크홀',               cat: '힐링 드로잉' },
+  { id: 'RAIN',     title: 'RAIN - 비 그리기',                 cat: '힐링 드로잉' },
+  { id: 'ANIMAL',   title: 'ANIMAL - 동물 그리기',             cat: '힐링 드로잉' },
+  { id: 'NETWORK',  title: 'NETWORK - 네트워크',               cat: '힐링 드로잉' },
+  { id: 'THINK',    title: 'THINK - 생각 그리기',              cat: '힐링 드로잉' },
+  { id: 'LOOK',     title: 'LOOK - 관찰 그리기',               cat: '힐링 드로잉' },
+  { id: 'CUP',      title: 'CUP - 컵 (드로잉 릴렉싱)',         cat: '힐링 드로잉' },
+  { id: 'CANDLE',   title: 'CANDLE - 캔들 (드로잉 릴렉싱)',    cat: '힐링 드로잉' },
+  { id: 'BAG',      title: 'BAG - 가방 (드로잉 릴렉싱)',       cat: '힐링 드로잉' },
+  { id: 'RETOUCH',  title: 'RETOUCH - 리터치',                cat: '힐링 드로잉' },
+  { id: 'NEWME',    title: 'NEWME - 새로운 나 (드로잉)',       cat: '힐링 드로잉' },
+  { id: 'HEART',    title: 'HEART - 하트 (드로잉 릴렉싱)',     cat: '힐링 드로잉' },
+
+  // ── LOOKING BACK 전용 키 (각 본활동의 돌아보기 음원 설정용) ──
+  // 레코딩
+  { id: 'VOICE_LB',          title: 'VOICE - LOOKING BACK',          cat: '힐링 레코딩' },
+  { id: 'TIME AND MONEY_LB', title: 'TIME AND MONEY - LOOKING BACK', cat: '힐링 레코딩' },
+  { id: 'FOND_LB',           title: 'FOND - LOOKING BACK',           cat: '힐링 레코딩' },
+  { id: 'DISLIKE_LB',        title: 'DISLIKE - LOOKING BACK',        cat: '힐링 레코딩' },
+  { id: 'REMAIN_LB',         title: 'REMAIN - LOOKING BACK',         cat: '힐링 레코딩' },
+  { id: 'EMOTION_LB',        title: 'EMOTION - LOOKING BACK',        cat: '힐링 레코딩' },
+  { id: 'PARTNER_LB',        title: 'PARTNER - LOOKING BACK',        cat: '힐링 레코딩' },
+  { id: 'ONCE_LB',           title: 'ONCE - LOOKING BACK',           cat: '힐링 레코딩' },
+  { id: 'SUPPORT_LB',        title: 'SUPPORT - LOOKING BACK',        cat: '힐링 레코딩' },
+  { id: 'LETTER_LB',         title: 'LETTER - LOOKING BACK',         cat: '힐링 레코딩' },
+  { id: 'MY SIDE_LB',        title: 'MY SIDE - LOOKING BACK',        cat: '힐링 레코딩' },
+  { id: "IT'S ME_LB",        title: "IT'S ME - LOOKING BACK",        cat: '힐링 레코딩' },
+
+  // 라이팅
+  { id: 'STAR I_LB',   title: 'STAR I - LOOKING BACK',   cat: '힐링 라이팅' },
+  { id: 'ASK_LB',      title: 'ASK - LOOKING BACK',      cat: '힐링 라이팅' },
+  { id: 'NAME_LB',     title: 'NAME - LOOKING BACK',     cat: '힐링 라이팅' },
+  { id: 'STAR II_LB',  title: 'STAR II - LOOKING BACK',  cat: '힐링 라이팅' },
+  { id: 'ABOUT_LB',    title: 'ABOUT - LOOKING BACK',    cat: '힐링 라이팅' },
+  { id: 'WORDS_LB',    title: 'WORDS - LOOKING BACK',    cat: '힐링 라이팅' },
+  { id: 'DAY_LB',      title: 'DAY - LOOKING BACK',      cat: '힐링 라이팅' },
+  { id: 'LIST_W_LB',   title: 'LIST (라이팅) - LOOKING BACK',  cat: '힐링 라이팅' },
+  { id: 'BRAIN_LB',    title: 'BRAIN - LOOKING BACK',    cat: '힐링 라이팅' },
+  { id: 'HARD_LB',     title: 'HARD - LOOKING BACK',     cat: '힐링 라이팅' },
+  { id: 'DIARY_W_LB',  title: 'DIARY (라이팅) - LOOKING BACK', cat: '힐링 라이팅' },
+  { id: 'FLEX_LB',     title: 'FLEX - LOOKING BACK',     cat: '힐링 라이팅' },
+  { id: 'GIFT_LB',     title: 'GIFT - LOOKING BACK',     cat: '힐링 라이팅' },
+  { id: 'RELATION_LB', title: 'RELATION - LOOKING BACK', cat: '힐링 라이팅' },
+  { id: 'FRIEND_LB',   title: 'FRIEND - LOOKING BACK',   cat: '힐링 라이팅' },
+  { id: 'TRIP_LB',     title: 'TRIP - LOOKING BACK',     cat: '힐링 라이팅' },
+  { id: 'SAY_LB',      title: 'SAY - LOOKING BACK',      cat: '힐링 라이팅' },
+  { id: 'HOPE_LB',     title: 'HOPE - LOOKING BACK',     cat: '힐링 라이팅' },
+
+  // 드로잉
+  { id: 'MUSIC_LB',    title: 'MUSIC - LOOKING BACK',    cat: '힐링 드로잉' },
+  { id: 'PAINT_LB',    title: 'PAINT - LOOKING BACK',    cat: '힐링 드로잉' },
+  { id: 'COLOR_LB',    title: 'COLOR - LOOKING BACK',    cat: '힐링 드로잉' },
+  { id: 'ONE_LB',      title: 'ONE - LOOKING BACK',      cat: '힐링 드로잉' },
+  { id: 'Favorite_LB', title: 'FAVORITE - LOOKING BACK', cat: '힐링 드로잉' },
+  { id: 'JANUS_LB',    title: 'JANUS - LOOKING BACK',    cat: '힐링 드로잉' },
+  { id: 'IF_LB',       title: 'IF - LOOKING BACK',       cat: '힐링 드로잉' },
+  { id: 'ROAD_LB',     title: 'ROAD - LOOKING BACK',     cat: '힐링 드로잉' },
+  { id: 'FACE_LB',     title: 'FACE - LOOKING BACK',     cat: '힐링 드로잉' },
+  { id: 'TRIP_D_LB',   title: 'TRIP (드로잉) - LOOKING BACK',   cat: '힐링 드로잉' },
+  { id: 'SINKHOLE_LB', title: 'SINKHOLE - LOOKING BACK', cat: '힐링 드로잉' },
+  { id: 'RAIN_LB',     title: 'RAIN - LOOKING BACK',     cat: '힐링 드로잉' },
+  { id: 'ANIMAL_LB',   title: 'ANIMAL - LOOKING BACK',   cat: '힐링 드로잉' },
+  { id: 'NETWORK_LB',  title: 'NETWORK - LOOKING BACK',  cat: '힐링 드로잉' },
+  { id: 'THINK_LB',    title: 'THINK - LOOKING BACK',    cat: '힐링 드로잉' },
+  { id: 'LOOK_LB',     title: 'LOOK - LOOKING BACK',     cat: '힐링 드로잉' },
+  { id: 'RETOUCH_LB',  title: 'RETOUCH - LOOKING BACK',  cat: '힐링 드로잉' },
+  { id: 'NEWME_LB',    title: 'NEWME - LOOKING BACK',    cat: '힐링 드로잉' },
+];
+
+// 편지 + 미션 두 개의 음원이 기본으로 존재하는 미션들 (라이팅북 메인 미션)
+// 0번(편지)와 1번(미션) 음원이 모두 있는 콘텐츠들
+const MISSIONS_WITH_LETTER_AND_MISSION = new Set([
+  'ALONG',
+  'STAR I',
+  'ASK',
+  'NAME',
+  'STAR II',
+  'ABOUT',
+  'WORDS',
+  'DAY',
+  'LIST_W',
+  'BRAIN',
+  'HARD',
+  'GIFT',
+  'RELATION',
+  'FRIEND',
+  'TRIP',
+  'SAY',
+  'HOPE',
+  'DIARY_W',
+  'FLEX',
+  'NEWME_W',
+]);
+
+// 관리자 화면에서 미션 노출 순서 (앱의 콘텐츠 순서와 최대한 맞춤)
+const MISSION_ORDER = {
+  // 라이팅 Part 1
+  ALONG: 10,
+  'STAR I': 20,
+  NAME: 30,
+  ABOUT: 40,
+  REPLY: 50,
+  MAKE: 60,
+  COMPLETE: 70,
+  THINGS: 80,
+  ASK: 90,
+  '3 LINES': 100,
+  ANY: 110,
+  MEMO: 120,
+  'STAR II': 130,
+  '5 LINES': 140,
+  LYRICS: 150,
+  // 라이팅 Part 2
+  WORDS: 200,
+  DAY: 210,
+  LIST_W: 220,
+  DIARY_W: 230,
+  FLEX: 240,
+  NEWME_W: 250,
+  // 라이팅 Part 3
+  GIFT: 300,
+  RELATION: 310,
+  FRIEND: 320,
+  TRIP: 330,
+  SAY: 340,
+  HOPE: 350,
+};
+
+// ═══════════════════════════════════════════
+// 유틸
+// ═══════════════════════════════════════════
+function ls(key) {
+  try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch { return null; }
+}
+function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+function showToast(msg, duration = 2600) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════
+// Origin 확인
+// ═══════════════════════════════════════════
+(function checkOrigin() {
+  // 127.0.0.1로 접속했으면 localhost로 자동 리다이렉트
+  if (location.hostname === '127.0.0.1') {
+    location.href = location.href.replace('127.0.0.1', 'localhost');
+    return;
+  }
+  // file:// 프로토콜 경고 (로그인 전에도 표시)
+  if (location.protocol === 'file:') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const hint = document.getElementById('auth-hint');
+      if (hint) hint.innerHTML = '⚠️ 파일로 직접 열면 저장이 앱에 적용되지 않습니다!<br>반드시 <strong>http://localhost:8080/admin.html</strong> 로 접속하세요.';
+    });
+  }
+})();
+
+// ═══════════════════════════════════════════
+// 인증
+// ═══════════════════════════════════════════
+function getAdminPw() { return ls(ADMIN_PW_KEY) || DEFAULT_PW; }
+
+function login() {
+  const pw = document.getElementById('pw-input').value;
+  if (pw === getAdminPw()) {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('admin-app').classList.remove('hidden');
+    // file:// 프로토콜로 접근 시 경고 표시
+    if (location.protocol === 'file:') {
+      const banner = document.getElementById('file-protocol-warning');
+      if (banner) banner.style.display = 'flex';
+    }
+    renderAll();
+  } else {
+    document.getElementById('pw-error').textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('pw-input').select();
+  }
+}
+
+function logout() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('admin-app').classList.add('hidden');
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-error').textContent = '';
+}
+
+function changePassword() {
+  const np = document.getElementById('new-pw').value.trim();
+  const cp = document.getElementById('confirm-pw').value.trim();
+  if (!np) { showToast('새 비밀번호를 입력하세요'); return; }
+  if (np.length < 4) { showToast('비밀번호는 4자 이상이어야 합니다'); return; }
+  if (np !== cp) { showToast('비밀번호가 일치하지 않습니다'); return; }
+  lsSet(ADMIN_PW_KEY, np);
+  document.getElementById('new-pw').value = '';
+  document.getElementById('confirm-pw').value = '';
+  showToast('✅ 비밀번호가 변경되었습니다');
+}
+
+// ═══════════════════════════════════════════
+// 탭
+// ═══════════════════════════════════════════
+const TAB_NAMES = ['contents', 'missions', 'posts', 'data'];
+
+function showTab(name) {
+  TAB_NAMES.forEach(n => {
+    document.getElementById('tab-' + n).classList.toggle('hidden', n !== name);
+  });
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', TAB_NAMES[i] === name);
+  });
+  if (name === 'missions') updateOriginStatus();
+}
+
+function updateOriginStatus() {
+  const iconEl  = document.getElementById('origin-status-icon');
+  const msgEl   = document.getElementById('origin-status-msg');
+  const dispEl  = document.getElementById('origin-display');
+  const cardEl  = document.getElementById('origin-status-card');
+  if (!iconEl || !msgEl) return;
+
+  const origin = location.origin;
+  dispEl.textContent = '현재: ' + origin;
+
+  // 앱이 동작하는 허용 origin 목록 (로컬 개발 + 배포 도메인)
+  const APP_ORIGINS = ['http://localhost:8080', 'https://links.tunachat.net'];
+
+  if (location.protocol === 'file:') {
+    iconEl.textContent  = '🚫';
+    msgEl.innerHTML     = '<strong style="color:#c0392b">file:// 프로토콜입니다!</strong> 저장해도 앱에 적용되지 않습니다. 브라우저 주소창에 <code>http://localhost:8080/admin.html</code> 을 직접 입력하세요.';
+    cardEl.style.borderColor = '#e74c3c';
+    cardEl.style.background  = '#fff5f5';
+  } else if (APP_ORIGINS.includes(origin)) {
+    iconEl.textContent  = '✅';
+    msgEl.innerHTML     = '<strong style="color:#27ae60">정상입니다.</strong> 이 페이지에서 저장한 링크가 앱에서 바로 사용됩니다.';
+    cardEl.style.borderColor = '#27ae60';
+    cardEl.style.background  = '#f0fff4';
+  } else {
+    iconEl.textContent  = '⚠️';
+    msgEl.innerHTML     = '<strong style="color:#e67e22">주소가 다릅니다!</strong> 앱은 <code>http://localhost:8080</code> 또는 <code>https://links.tunachat.net</code> 을 사용합니다. 브라우저 주소창에 <code>http://localhost:8080/admin.html</code> 또는 배포 도메인의 <code>/admin.html</code>을 입력해서 다시 접속해 주세요.';
+    cardEl.style.borderColor = '#e67e22';
+    cardEl.style.background  = '#fffbf0';
+  }
+}
+
+// ═══════════════════════════════════════════
+// 데이터 로드
+// ═══════════════════════════════════════════
+function getContents() {
+  const d = ls(STORAGE.contents);
+  return (d && d.length) ? d : DEFAULT_CONTENTS.map(c => ({ ...c }));
+}
+function getPosts() {
+  const d = ls(STORAGE.posts);
+  return (d && d.length) ? d : DEFAULT_POSTS.map(p => ({ ...p }));
+}
+function getMissionAudio() { return ls(STORAGE.missionAudio) || {}; }
+function getShareLink() { return ls(STORAGE.shareLink) || ''; }
+function getShareLinkText() { return ls(STORAGE.shareLinkText) || ''; }
+function getDailyQuotes() {
+  const d = ls(STORAGE.dailyQuotes);
+  return Array.isArray(d) ? d : [];
+}
+
+function renderAll() {
+  renderShareLink();
+  renderDailyQuotes();
+  renderContents();
+  renderMissions();
+  renderPosts();
+}
+
+// ═══════════════════════════════════════════
+// 콘텐츠 관리
+// ═══════════════════════════════════════════
+function renderContents() {
+  const contents = getContents();
+  const tbody = document.getElementById('contents-tbody');
+  if (!contents.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">콘텐츠가 없습니다. 새 콘텐츠를 추가해 보세요.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = contents.map(c => `
+    <tr>
+      <td><span class="badge badge-gray">${esc(c.id)}</span></td>
+      <td>${esc(c.title || '-')}</td>
+      <td style="color:#555">${esc(c.displayTitle || c.title || '-')}</td>
+      <td><span class="badge badge-green">${esc(c.theme || '-')}</span></td>
+      <td><span class="badge badge-blue">${(c.audioUrls || []).length}개</span></td>
+      <td class="action-cell">
+        <button class="btn btn-secondary btn-sm" onclick='editContent(${JSON.stringify(c.id)})'>편집</button>
+        <button class="btn btn-danger btn-sm" onclick='deleteContent(${JSON.stringify(c.id)})' style="margin-left:6px">삭제</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+let editingContentId = null;
+
+function openAddContent() {
+  editingContentId = null;
+  document.getElementById('content-modal-title').textContent = '새 콘텐츠 추가';
+  document.getElementById('content-edit-idfield').value = '';
+  document.getElementById('content-edit-idfield').removeAttribute('readonly');
+  document.getElementById('content-edit-title').value = '';
+  document.getElementById('content-edit-displaytitle').value = '';
+  document.getElementById('content-edit-theme').value = '';
+  document.getElementById('content-edit-desc').value = '';
+  renderContentUrlInputs([]);
+  document.getElementById('content-modal').classList.remove('hidden');
+}
+
+function editContent(id) {
+  editingContentId = id;
+  const c = getContents().find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('content-modal-title').textContent = '콘텐츠 편집';
+  document.getElementById('content-edit-idfield').value = c.id;
+  document.getElementById('content-edit-idfield').setAttribute('readonly', true);
+  document.getElementById('content-edit-title').value = c.title || '';
+  document.getElementById('content-edit-displaytitle').value = c.displayTitle || '';
+  document.getElementById('content-edit-theme').value = c.theme || '';
+  document.getElementById('content-edit-desc').value = c.description || '';
+  renderContentUrlInputs(c.audioUrls || []);
+  document.getElementById('content-modal').classList.remove('hidden');
+}
+
+function renderContentUrlInputs(urls) {
+  const container = document.getElementById('content-audio-urls');
+  container.innerHTML = '';
+  const list = urls.length ? urls : [''];
+  list.forEach(url => _appendUrlInput(container, url));
+}
+
+function addContentUrlInput() {
+  _appendUrlInput(document.getElementById('content-audio-urls'), '');
+}
+
+function _appendUrlInput(container, val) {
+  const div = document.createElement('div');
+  div.className = 'url-item';
+  div.innerHTML = `
+    <input type="text" placeholder="https://youtu.be/VIDEO_ID 또는 https://www.youtube.com/watch?v=VIDEO_ID" value="${esc(val)}">
+    <button class="btn-remove-url" onclick="this.parentElement.remove()" title="삭제">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function saveContent() {
+  const id            = document.getElementById('content-edit-idfield').value.trim();
+  const title         = document.getElementById('content-edit-title').value.trim();
+  const displayTitle  = document.getElementById('content-edit-displaytitle').value.trim();
+  const theme         = document.getElementById('content-edit-theme').value.trim();
+  const description   = document.getElementById('content-edit-desc').value.trim();
+  const audioUrls     = [...document.querySelectorAll('#content-audio-urls .url-item input')]
+                          .map(i => i.value.trim()).filter(Boolean);
+
+  if (!id)                    { showToast('ID를 입력하세요'); return; }
+  if (!title && !displayTitle){ showToast('제목을 입력하세요'); return; }
+
+  const contents = getContents();
+  if (editingContentId) {
+    const idx = contents.findIndex(c => c.id === editingContentId);
+    if (idx !== -1) contents[idx] = { ...contents[idx], id, title, displayTitle, theme, description, audioUrls };
+  } else {
+    if (contents.find(c => c.id === id)) { showToast('이미 같은 ID가 있습니다'); return; }
+    contents.push({ id, title, displayTitle, theme, description, audioUrls, recordings: [], hasUnrecorded: true });
+  }
+
+  lsSet(STORAGE.contents, contents);
+  renderContents();
+  closeContentModal();
+  showToast(editingContentId ? '✅ 콘텐츠가 수정되었습니다' : '✅ 콘텐츠가 추가되었습니다');
+}
+
+function deleteContent(id) {
+  if (!confirm(`콘텐츠 ID "${id}"를 삭제하시겠습니까?`)) return;
+  lsSet(STORAGE.contents, getContents().filter(c => c.id !== id));
+  renderContents();
+  showToast('콘텐츠가 삭제되었습니다');
+}
+
+function closeContentModal() {
+  document.getElementById('content-modal').classList.add('hidden');
+  editingContentId = null;
+}
+
+// ═══════════════════════════════════════════
+// 미션 음원 관리
+// ═══════════════════════════════════════════
+function renderMissions(filter) {
+  filter = (filter || '').trim().toLowerCase();
+  const missionAudio = getMissionAudio();
+  const container    = document.getElementById('missions-list');
+
+  const filtered = filter
+    ? MISSION_LIST.filter(m => m.title.toLowerCase().includes(filter) || m.id.toLowerCase().includes(filter))
+    : MISSION_LIST;
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state">검색 결과가 없습니다</div>';
+    return;
+  }
+
+  const CAT_ORDER = ['힐링 라이팅', '힐링 드로잉', '힐링 레코딩'];
+  const cats = filter ? ['검색 결과'] : CAT_ORDER.filter(c => MISSION_LIST.some(m => m.cat === c));
+
+  container.innerHTML = cats.map(cat => {
+    let missions = filter ? filtered : filtered.filter(m => m.cat === cat);
+    if (!filter) {
+      missions = [...missions].sort((a, b) => {
+        const oa = MISSION_ORDER[a.id] ?? 9999;
+        const ob = MISSION_ORDER[b.id] ?? 9999;
+        if (oa !== ob) return oa - ob;
+        return a.title.localeCompare(b.title);
+      });
+    }
+    if (!missions.length) return '';
+
+    return `
+      <div class="mission-category">
+        <div class="mission-category-title">${esc(cat)}</div>
+        ${missions.map(m => {
+          const idKey    = m.id.replace(/\s+/g, '_');
+          const data     = missionAudio[m.id] || {};
+          // 기존 레거시 포맷 → entries 변환
+          let entries = data.entries || [];
+          if (!entries.length) {
+            const legacy = [];
+            (data.audioUrls || []).forEach((u, i) => { if (u) legacy.push({ url: u, text: (data.audioTexts || [])[i] || '' }); });
+            (data.lookingBackUrls || []).forEach((u, i) => { if (u) legacy.push({ url: u, text: (data.lookingBackTexts || [])[i] || '' }); });
+            (data.relaxingUrls || []).forEach((u, i) => { if (u) legacy.push({ url: u, text: (data.relaxingTexts || [])[i] || '' }); });
+            entries = legacy;
+          }
+          if (!entries.length) {
+            if (MISSIONS_WITH_LETTER_AND_MISSION.has(m.id)) {
+              entries = [
+                { url: '', text: '편지 왔어요' },
+                { url: '', text: '미션' },
+              ];
+            } else {
+              entries = [{ url: '', text: '' }];
+            }
+          }
+          const hasAny = entries.some(e => e.url);
+
+          return `
+            <div class="mission-row" id="mrow-${idKey}">
+              <div class="mission-row-header" onclick="toggleMissionRow('${idKey}')">
+                <span class="mission-row-title">${esc(m.title)}</span>
+                <div class="mission-row-meta">
+                  <span class="mission-row-status ${hasAny ? 'has-url' : ''}">${hasAny ? '● 링크 있음' : '○ 없음'}</span>
+                  <span class="mission-row-chevron">▼</span>
+                </div>
+              </div>
+              <div class="mission-row-body">
+                <div class="url-list" id="urls-${idKey}">
+                  ${entries.map(e => `
+                    <div class="url-item">
+                      <input type="text" class="url-input" placeholder="https://youtu.be/VIDEO_ID" value="${esc(e.url)}">
+                      <input type="text" class="text-input" placeholder="재생 텍스트 (선택)" value="${esc(e.text)}">
+                      <button class="btn-remove-url" onclick="this.parentElement.remove()">✕</button>
+                    </div>`).join('')}
+                </div>
+                <div class="mission-actions">
+                  <button class="btn btn-secondary btn-sm" onclick="addMissionUrl('urls-${idKey}')">+ 링크 추가</button>
+                  <button class="btn btn-primary btn-sm" onclick="saveMission('${esc(m.id)}','${idKey}')">저장</button>
+                  <button class="btn btn-danger btn-sm" onclick="clearMission('${esc(m.id)}','${idKey}')">초기화</button>
+                </div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }).join('');
+}
+
+function toggleMissionRow(idKey) {
+  document.getElementById('mrow-' + idKey)?.classList.toggle('expanded');
+}
+
+// 링크 추가 버튼
+function addMissionUrl(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'url-item';
+  div.innerHTML = `
+    <input type="text" class="url-input" placeholder="https://youtu.be/VIDEO_ID 또는 watch?v=VIDEO_ID">
+    <input type="text" class="text-input" placeholder="재생 텍스트 (선택)">
+    <button class="btn-remove-url" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+// 저장
+function saveMission(missionId, idKey) {
+  const container = document.getElementById(`urls-${idKey}`);
+  const entries = container ? [...container.querySelectorAll('.url-item')].map(item => ({
+    url:  (item.querySelector('.url-input')  || {}).value?.trim() || '',
+    text: (item.querySelector('.text-input') || {}).value?.trim() || ''
+  })).filter(e => e.url) : [];
+
+  const missionAudio = getMissionAudio();
+  missionAudio[missionId] = { entries };
+  lsSet(STORAGE.missionAudio, missionAudio);
+
+  const rowStatus = document.querySelector(`#mrow-${idKey} .mission-row-status`);
+  if (rowStatus) {
+    rowStatus.textContent = entries.length ? '● 링크 있음' : '○ 없음';
+    rowStatus.className   = 'mission-row-status' + (entries.length ? ' has-url' : '');
+  }
+
+  const appOrigins = ['http://localhost:8080', 'https://links.tunachat.net'];
+  if (!appOrigins.includes(location.origin) && location.protocol !== 'http:') {
+    showToast(`⚠️ 저장했지만 앱 origin(로컬 또는 배포 도메인)과 다를 수 있습니다.`, 5000);
+  } else {
+    showToast(`✅ "${missionId}" 저장되었습니다`);
+  }
+}
+
+// 초기화
+function clearMission(missionId, idKey) {
+  if (!confirm(`"${missionId}" 음원 링크를 초기화하시겠습니까?`)) return;
+  const missionAudio = getMissionAudio();
+  delete missionAudio[missionId];
+  lsSet(STORAGE.missionAudio, missionAudio);
+  renderMissions(document.getElementById('mission-search').value);
+  showToast(`"${missionId}" 음원이 초기화되었습니다`);
+}
+
+// 하위 호환 (구버전 함수명 — 혹시 호출될 경우 대비)
+function clearMissionAudio(missionId, idKey) { clearMission(missionId, idKey); }
+
+function filterMissions() {
+  renderMissions(document.getElementById('mission-search').value);
+}
+
+// ═══════════════════════════════════════════
+// 게시물 관리
+// ═══════════════════════════════════════════
+function renderPosts() {
+  const posts = getPosts();
+  const tbody = document.getElementById('posts-tbody');
+  if (!posts.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">게시물이 없습니다</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = posts.map(p => `
+    <tr>
+      <td><span class="badge badge-gray">${esc(p.id)}</span></td>
+      <td>${esc(p.title || '-')}</td>
+      <td>${esc(p.date || '-')}</td>
+      <td>${p.likes || 0}</td>
+      <td><span class="badge badge-blue">${(p.audioUrls || []).length}개</span></td>
+      <td class="action-cell">
+        <button class="btn btn-secondary btn-sm" onclick='editPost(${JSON.stringify(p.id)})'>편집</button>
+        <button class="btn btn-danger btn-sm" onclick='deletePost(${JSON.stringify(p.id)})' style="margin-left:6px">삭제</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editPost(id) {
+  const p = getPosts().find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('post-edit-id').value    = p.id;
+  document.getElementById('post-edit-title').value = p.title || '';
+  document.getElementById('post-edit-body').value  = p.body  || '';
+  renderPostUrlInputs(p.audioUrls || []);
+  document.getElementById('post-modal').classList.remove('hidden');
+}
+
+function renderPostUrlInputs(urls) {
+  const container = document.getElementById('post-audio-urls');
+  container.innerHTML = '';
+  const list = urls.length ? urls : [''];
+  list.forEach(url => _appendPostUrlInput(container, url));
+}
+
+function addPostUrlInput() {
+  _appendPostUrlInput(document.getElementById('post-audio-urls'), '');
+}
+
+function _appendPostUrlInput(container, val) {
+  const div = document.createElement('div');
+  div.className = 'url-item';
+  div.innerHTML = `
+    <input type="text" placeholder="https://youtu.be/VIDEO_ID 또는 watch?v=VIDEO_ID" value="${esc(val)}">
+    <button class="btn-remove-url" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+function savePost() {
+  const id       = document.getElementById('post-edit-id').value;
+  const title    = document.getElementById('post-edit-title').value.trim();
+  const body     = document.getElementById('post-edit-body').value.trim();
+  const audioUrls = [...document.querySelectorAll('#post-audio-urls .url-item input')]
+                      .map(i => i.value.trim()).filter(Boolean);
+
+  const posts = getPosts();
+  const idx   = posts.findIndex(p => p.id === id);
+  if (idx !== -1) {
+    posts[idx] = { ...posts[idx], title, body, audioUrls };
+    lsSet(STORAGE.posts, posts);
+    renderPosts();
+    closePostModal();
+    showToast('✅ 게시물이 수정되었습니다');
+  }
+}
+
+function deletePost(id) {
+  if (!confirm('이 게시물을 삭제하시겠습니까?')) return;
+  lsSet(STORAGE.posts, getPosts().filter(p => p.id !== id));
+  renderPosts();
+  showToast('게시물이 삭제되었습니다');
+}
+
+function closePostModal() {
+  document.getElementById('post-modal').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════
+// 공유 링크
+// ═══════════════════════════════════════════
+function renderShareLink() {
+  const el = document.getElementById('share-link-input');
+  if (el) el.value = getShareLink();
+  const textEl = document.getElementById('share-link-text-input');
+  if (textEl) textEl.value = getShareLinkText();
+}
+
+function saveShareLink() {
+  const el = document.getElementById('share-link-input');
+  const url = (el && el.value.trim()) || '';
+  const textEl = document.getElementById('share-link-text-input');
+  const text = (textEl && textEl.value.trim()) || '';
+  lsSet(STORAGE.shareLink, url);
+  lsSet(STORAGE.shareLinkText, text);
+  showToast('✅ 공유 설정이 저장되었습니다');
+}
+
+// ═══════════════════════════════════════════
+// 오늘의 한 문장
+// ═══════════════════════════════════════════
+function renderDailyQuotes() {
+  const list = document.getElementById('daily-quotes-list');
+  if (!list) return;
+  const quotes = getDailyQuotes();
+  if (!quotes.length) {
+    list.innerHTML = '<p class="text-muted" style="font-size:13px">추가된 문장이 없습니다.</p>';
+    return;
+  }
+  list.innerHTML = quotes.map((q, i) => `
+    <div class="daily-quote-item" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:#f8f8f8;border-radius:8px;margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;margin-bottom:4px">${(q.ko || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div style="font-size:12px;color:#666">${(q.en || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+      </div>
+      <button type="button" class="btn btn-secondary" style="padding:4px 8px;font-size:12px" onclick="deleteDailyQuote(${i})">삭제</button>
+    </div>
+  `).join('');
+}
+
+function addDailyQuote() {
+  const koEl = document.getElementById('daily-quote-ko');
+  const enEl = document.getElementById('daily-quote-en');
+  let ko = (koEl && koEl.value.trim()) || '';
+  let en = (enEl && enEl.value.trim()) || '';
+  if (!ko && !en) {
+    showToast('한국어 또는 영어 문장을 입력해 주세요.');
+    return;
+  }
+  if (ko && !en) en = ko;
+  else if (en && !ko) ko = en;
+  const quotes = getDailyQuotes();
+  quotes.push({ ko, en });
+  lsSet(STORAGE.dailyQuotes, quotes);
+  if (koEl) koEl.value = '';
+  if (enEl) enEl.value = '';
+  renderDailyQuotes();
+  showToast('✅ 문장이 추가되었습니다');
+}
+
+function deleteDailyQuote(index) {
+  const quotes = getDailyQuotes();
+  if (index < 0 || index >= quotes.length) return;
+  quotes.splice(index, 1);
+  lsSet(STORAGE.dailyQuotes, quotes);
+  renderDailyQuotes();
+  showToast('문장이 삭제되었습니다');
+}
+
+// ═══════════════════════════════════════════
+// 데이터 관리
+// ═══════════════════════════════════════════
+function exportData() {
+  const data = {
+    exportDate:   new Date().toISOString(),
+    contents:     getContents(),
+    posts:        getPosts(),
+    missionAudio: getMissionAudio(),
+    activities:   ls(STORAGE.activities) || [],
+    shareLink:    getShareLink(),
+    shareLinkText: getShareLinkText(),
+    dailyQuotes:  getDailyQuotes(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `contique_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 데이터를 내보냈습니다');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.contents)     lsSet(STORAGE.contents, data.contents);
+      if (data.posts)        lsSet(STORAGE.posts, data.posts);
+      if (data.missionAudio) lsSet(STORAGE.missionAudio, data.missionAudio);
+      if (data.activities)   lsSet(STORAGE.activities, data.activities);
+      if (data.shareLink !== undefined) lsSet(STORAGE.shareLink, data.shareLink || '');
+      if (data.shareLinkText !== undefined) lsSet(STORAGE.shareLinkText, data.shareLinkText || '');
+      if (Array.isArray(data.dailyQuotes)) lsSet(STORAGE.dailyQuotes, data.dailyQuotes);
+      renderAll();
+      showToast('✅ 데이터를 가져왔습니다');
+    } catch {
+      showToast('⚠️ 파일 형식이 올바르지 않습니다');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetContents() {
+  if (!confirm('콘텐츠를 기본값으로 초기화하시겠습니까?')) return;
+  localStorage.removeItem(STORAGE.contents);
+  renderContents();
+  showToast('콘텐츠가 초기화되었습니다');
+}
+function resetPosts() {
+  if (!confirm('게시물을 기본값으로 초기화하시겠습니까?')) return;
+  localStorage.removeItem(STORAGE.posts);
+  renderPosts();
+  showToast('게시물이 초기화되었습니다');
+}
+function resetMissionAudio() {
+  if (!confirm('미션 음원 링크를 모두 삭제하시겠습니까?')) return;
+  localStorage.removeItem(STORAGE.missionAudio);
+  renderMissions();
+  showToast('미션 음원이 초기화되었습니다');
+}
+function resetAll() {
+  if (!confirm('모든 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+  [STORAGE.contents, STORAGE.posts, STORAGE.missionAudio, STORAGE.activities, STORAGE.splashDone, STORAGE.shareLink, STORAGE.shareLinkText, STORAGE.dailyQuotes]
+    .forEach(k => localStorage.removeItem(k));
+  renderAll();
+  showToast('✅ 전체 초기화 완료');
+}
+
+// ═══════════════════════════════════════════
+// 이벤트
+// ═══════════════════════════════════════════
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+document.getElementById('content-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('content-modal')) closeContentModal();
+});
+document.getElementById('post-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('post-modal')) closePostModal();
+});
+</script>
+</body>
+</html>

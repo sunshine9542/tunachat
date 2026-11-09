@@ -1,0 +1,9 @@
+{
+  "name": "tunachat",
+  "version": "1.0.0",
+  "description": "Tunachat - 나를 찾아 떠나는 힐링 레코딩",
+  "scripts": {
+    "start": "npx serve . -l 8080",
+    "dev": "python3 -m http.server 8080"
+  }
+}

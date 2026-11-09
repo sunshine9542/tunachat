@@ -1,0 +1,12 @@
+{
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "framework": null,
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    {
+      "source": "/((?!.*\\.(?:html|css|js|ico|png|jpg|jpeg|gif|svg|webp|woff|woff2|pdf|txt|json)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

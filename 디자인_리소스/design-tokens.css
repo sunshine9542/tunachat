@@ -1,0 +1,62 @@
+/* 떠나찾 디자인 리소스 - 디자인 토큰 */
+:root {
+  /* 메인 컬러 - 라임 그린 */
+  --color-lime: #7EC400;
+  --color-lime-light: #9ED94D;
+  --color-lime-dark: #5FA300;
+  
+  /* 컬러 팔레트 */
+  --color-primary: #7EC400;
+  --color-primary-light: #9ED94D;
+  --color-primary-dark: #5FA300;
+  --color-accent: #E8A87C;
+  --color-accent-light: #F5D4B8;
+  
+  --color-bg: #FFFFFF;
+  --color-bg-secondary: #F8F8F8;
+  --color-card: #FFFFFF;
+  --color-card-elevated: #FFFFFF;
+  
+  --color-text: #2D2A32;
+  --color-text-secondary: #5A5660;
+  --color-text-muted: #9A94A0;
+  
+  --color-danger: #E74C3C;
+  --color-success: #5C9E7B;
+  --color-warning: #D4A84B;
+  
+  /* 스마트폰 화면 */
+  --phone-width: 390px;
+  --phone-height: 760px;
+  --phone-radius: 44px;
+  --phone-bezel: 12px;
+  --phone-notch-height: 2px;
+  --phone-safe-top: 47px;
+  --phone-safe-bottom: 34px;
+  
+  /* 간격 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  
+  /* 타이포그래피 */
+  --font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* 그림자 */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+}
