@@ -4018,18 +4018,36 @@ function isMissionCompleteButtonVisible(btn) {
   }
 }
 
+/** 레코딩 본활동에서 맨 위가 「편지」 음원 칸인지 (편지가 아니면 활동완료·대기 없이 녹음 칸 바로 사용) */
+function isRecordingFirstAudioLetterRow() {
+  if (partActivityMode !== 'recording') return false;
+  if (currentMissionViewMode === 'lookingback') return false;
+  const playbackSection = document.getElementById('mission-playback-section');
+  if (!playbackSection || playbackSection.style.display === 'none') return false;
+  try {
+    const cs = window.getComputedStyle(playbackSection);
+    return cs.display !== 'none' && playbackSection.getClientRects().length > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
 /** 윗칸에 활동완료 버튼이 없으면 다음 칸은 바로 사용 가능 */
 function getMissionRowUnlockState(hasMissionBox) {
   const playCompleteBtn = document.getElementById('mission-play-complete-btn');
   const missionCompleteBtn = document.getElementById('mission-mission-complete-btn');
-  const playCompleteVisible = isMissionCompleteButtonVisible(playCompleteBtn);
+  const recordingNoLetterFirst = partActivityMode === 'recording' && !isRecordingFirstAudioLetterRow();
+  const playCompleteVisible = !recordingNoLetterFirst && isMissionCompleteButtonVisible(playCompleteBtn);
   const missionCompleteVisible = hasMissionBox && isMissionCompleteButtonVisible(missionCompleteBtn);
 
-  const box1PlayUnlocked = playCompleteVisible ? missionAudioBox1Completed : true;
+  let box1PlayUnlocked = playCompleteVisible ? missionAudioBox1Completed : true;
+  if (recordingNoLetterFirst) box1PlayUnlocked = true;
 
   let recordingRowUnlocked = true;
   if (partActivityMode === 'recording') {
-    if (hasMissionBox) {
+    if (recordingNoLetterFirst) {
+      recordingRowUnlocked = true;
+    } else if (hasMissionBox) {
       if (missionCompleteVisible) {
         recordingRowUnlocked = missionAudioBox1Completed && missionAudioBox2Completed;
       } else {
@@ -4052,6 +4070,7 @@ function getMissionRowUnlockState(hasMissionBox) {
   return {
     playCompleteVisible,
     missionCompleteVisible,
+    recordingNoLetterFirst,
     box1PlayUnlocked,
     recordingRowUnlocked,
     giftUnlocked,
@@ -4098,8 +4117,13 @@ function updateMissionAudioBoxButtons() {
   };
 
   if (playBtn) {
-    setComplete(playBtn, missionAudioBox1Completed);
-    if (!missionAudioBox1Completed && unlock.playCompleteVisible) setEnabled(playBtn, true);
+    if (unlock.recordingNoLetterFirst) {
+      playBtn.style.display = 'none';
+    } else {
+      playBtn.style.display = '';
+      setComplete(playBtn, missionAudioBox1Completed);
+      if (!missionAudioBox1Completed && unlock.playCompleteVisible) setEnabled(playBtn, true);
+    }
   }
   if (missionBtn) {
     if (!hasMissionBox || !unlock.missionCompleteVisible) {

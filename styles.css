@@ -1652,11 +1652,6 @@ body {
 #mission-looking-back-wrap #mission-playback-section .activity-complete-btn {
   display: none;
 }
-/* 레코딩 돌아보기: 첫 음원 카드에 활동완료 표시 (녹음 칸은 편지 완료 후) */
-.recording-mode #mission-looking-back-wrap #mission-playback-section .activity-complete-btn {
-  display: block;
-}
-
 .mission-audio-card {
   background: #fff;
   border-radius: 12px;
