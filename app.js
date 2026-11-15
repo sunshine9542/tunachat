@@ -3500,6 +3500,7 @@ function setMissionRecordingControlsEnabled(enabled) {
 
 // 돌아보기 완료 버튼 클릭 → 마음톡 표시
 function completeLookingBack() {
+  lookingBackActivityCompleted = true;
   revealMindTalk();
   const btn = document.getElementById('looking-back-complete-btn');
   if (btn) {
@@ -3508,6 +3509,7 @@ function completeLookingBack() {
     btn.style.opacity = '0.5';
     btn.style.pointerEvents = 'none';
   }
+  updateMissionPhotoButton();
 }
 
 // 현재 viewMode·phase에 따라 섹션 표시 갱신
@@ -3870,6 +3872,15 @@ function applyMissionRevealPhase() {
   updateMissionPhotoButton();
 }
 
+function canTakeMissionPhoto() {
+  const isWritingOrDrawing = partActivityMode === 'writing' || partActivityMode === 'drawing';
+  if (!isWritingOrDrawing) return false;
+  if (currentMissionViewMode === 'lookingback') {
+    return lookingBackActivityCompleted || missionRevealPhase >= 2;
+  }
+  return isAllMissionActivitiesCompleted();
+}
+
 function isAllMissionActivitiesCompleted() {
   const missionSection = document.getElementById('mission-mission-playback-section');
   const giftSection = document.getElementById('gift-mission-playback-section');
@@ -3912,12 +3923,12 @@ function updateMissionPhotoButton() {
   const currentKey = `${partActivityMode}_${partActivityPart}_${currentMissionId}_${currentMissionViewMode}_${currentRelaxingIdx ?? 0}`;
   const hasPhotoForMission = getMissionPhotos().some(p => getPhotoActivityKey(p) === currentKey);
   btn.textContent = hasPhotoForMission ? '다시 촬영' : '사진촬영';
-  const allDone = isAllMissionActivitiesCompleted();
-  if (allDone) {
+  const allDone = canTakeMissionPhoto();
+  if (allDone && !isCurrentMissionCompleted()) {
     btn.disabled = false;
     btn.style.opacity = '';
     btn.style.pointerEvents = '';
-  } else {
+  } else if (!allDone || isCurrentMissionCompleted()) {
     btn.disabled = true;
     btn.style.opacity = '0.5';
     btn.style.pointerEvents = 'none';
@@ -3928,8 +3939,10 @@ let missionCameraStream = null;
 
 function openMissionCamera() {
   const isWritingOrDrawing = partActivityMode === 'writing' || partActivityMode === 'drawing';
-  if (isWritingOrDrawing && !isAllMissionActivitiesCompleted()) {
-    alert('모든 활동을 완료한 후 사진촬영을 누를 수 있습니다.');
+  if (isWritingOrDrawing && !canTakeMissionPhoto()) {
+    alert(currentMissionViewMode === 'lookingback'
+      ? '돌아보기 활동완료 후 사진촬영을 누를 수 있습니다.'
+      : '모든 활동을 완료한 후 사진촬영을 누를 수 있습니다.');
     return;
   }
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -3990,6 +4003,16 @@ function captureFromCamera() {
   const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
   closeCameraModal();
   onMissionPhotoCaptured(dataUrl);
+}
+
+function setMissionAudioPlayButtonsEnabled(idPrefix, enabled) {
+  [`${idPrefix}-btn`, `${idPrefix}-pause-btn`, `${idPrefix}-stop-btn`].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !enabled;
+    el.style.opacity = enabled ? '' : '0.5';
+    el.style.pointerEvents = enabled ? '' : 'none';
+  });
 }
 
 function updateMissionAudioBoxButtons() {
@@ -4088,6 +4111,23 @@ function updateMissionAudioBoxButtons() {
       setEnabled(recBtn, false);
       recBtn.textContent = '활동완료';
     }
+  }
+
+  // 윗칸 활동완료 전에는 아래 칸 ▶ 재생 비활성 (활동완료 버튼과 같이 켜짐)
+  setMissionAudioPlayButtonsEnabled('mission-play', true);
+  if (hasMissionBox) {
+    const missionPlayOk = missionAudioBox1Completed;
+    setMissionAudioPlayButtonsEnabled('mission-mission-play', missionPlayOk);
+  }
+  if (hasGiftBox) {
+    setMissionAudioPlayButtonsEnabled('gift-mission-play', missionAudioBox1Completed && missionAudioBox2Completed);
+  }
+  if (hasRelaxAlt) {
+    setMissionAudioPlayButtonsEnabled('mission-relax-alt-play', missionAudioBox1Completed);
+  }
+  if (hasRecBox && partActivityMode === 'recording' && !isCurrentMissionCompleted()) {
+    const canRecord = !hasMissionBox || missionAudioBox1Completed;
+    setMissionRecordingControlsEnabled(canRecord);
   }
 }
 
@@ -4293,6 +4333,7 @@ function renderMissionDetail() {
   resetMissionMissionPlaybackUI();
   stopGiftMissionPlayback();
   stopMissionRelaxAltPlayback();
+  lookingBackActivityCompleted = false;
   missionAudioBox1Completed = false;
   missionAudioBox2Completed = false;
   missionRelaxAltAudioCompleted = false;
@@ -4466,6 +4507,9 @@ function renderMissionDetail() {
   const themeColors = { LETTER: '#FCE4EC', 'LOOKING BACK': '#E8E8F5', FOND: '#FCE4EC', DISLIKE: '#FFF8E1', 'ABOUT ME': '#E8F5E9', 'ABOUT ME (6)': '#E8F5E9', 'TIME AND MONEY': '#F5F0E8', PARTNER: '#E3F2FD', 'MY SIDE': '#EFEBE9', VOICE: '#E8F5E9', MUSIC: '#E3F2FD', Favorite: '#E8F5E9', SINKHOLE: '#E8E8E8', RETOUCH: '#F5F5F5', ALONG: '#E8F5E9', WORDS: '#E8F5E9', GIFT: '#E8F5E9', HOPE: '#FFF3E0', TRIP: '#E8F5E9', TRIP_D: '#E8F5E9', FLEX: '#FFF9C4', PAINT: '#FCE4EC', COLOR: '#E3F2FD', ONE: '#FFF8E1', JANUS: '#E8E8F5', IF: '#E0F2F1', ROAD: '#FFE0B2', FACE: '#F5F0E8', RAIN: '#B3E5FC', ANIMAL: '#C8E6C9', NETWORK: '#E1BEE7', THINK: '#F5F5F5', LOOK: '#E8E8E8', NEWME: '#FFF3E0' };
   if (thumbRow) thumbRow.style.background = themeColors[mission.theme] || '#F5F5F5';
 
+  if (currentMissionViewMode === 'lookingback' && isCurrentMissionCompleted()) {
+    lookingBackActivityCompleted = true;
+  }
   if (partActivityMode === 'recording' && isCurrentMissionCompleted()) {
     missionRevealPhase = Math.max(missionRevealPhase, 2);
   }
@@ -4868,6 +4912,7 @@ let missionMissionYouTubePlayer = null;
 let giftMissionPlaybackAudio = null;
 let giftMissionPlaybackProgressInterval = null;
 let giftMissionYouTubePlayer = null;
+let lookingBackActivityCompleted = false;
 let missionAudioBox1Completed = false;
 let missionAudioBox2Completed = false;
 let missionRelaxAltAudioCompleted = false;
@@ -5088,6 +5133,8 @@ function onMissionPlaybackEnded(phase) {
 }
 
 function toggleMissionPlayback() {
+  const playBtnEl = document.getElementById('mission-play-btn');
+  if (playBtnEl?.disabled) return;
   stopMissionMissionPlayback();
   stopMissionRelaxAltPlayback();
   // 유튜브 플레이어가 활성화된 경우
@@ -5274,6 +5321,8 @@ function resetGiftMissionPlaybackUI() {
 }
 
 function toggleMissionMissionPlayback() {
+  const playBtnEl = document.getElementById('mission-mission-play-btn');
+  if (playBtnEl?.disabled) return;
   if (missionMissionYouTubePlayer) {
     try {
       const state = missionMissionYouTubePlayer.getPlayerState();
@@ -5328,6 +5377,8 @@ function toggleMissionMissionPlayback() {
 
 // GIFT 전용 미션 박스 재생 (entries[2] 우선)
 function toggleGiftMissionPlayback() {
+  const playBtnEl = document.getElementById('gift-mission-play-btn');
+  if (playBtnEl?.disabled) return;
   stopMissionPlayback();
   stopMissionMissionPlayback();
   stopMissionRelaxAltPlayback();
