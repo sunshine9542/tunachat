@@ -1726,6 +1726,13 @@ body {
 .recording-mode #mission-playback-section .mission-playback-hint {
   display: none;
 }
+.mission-play-questions {
+  margin: 4px 0 12px;
+  text-align: left;
+}
+.mission-play-questions .lb-item {
+  margin-bottom: 8px;
+}
 /* 레코딩 모드: **0=편지 왔어요~, **1=미션 내용 표시 (둘 다 라벨 노출) */
 /* 레코딩 본활동 **1 칸: 활동완료 버튼 숨김 */
 .recording-mode #mission-mission-complete-btn {

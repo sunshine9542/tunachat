@@ -19,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>떠나찾 - 나를 찾아 떠나는 힐링 레코딩</title>
   <link rel="stylesheet" href="디자인_리소스/design-tokens.css?v=31">
-  <link rel="stylesheet" href="styles.css?v=80">
+  <link rel="stylesheet" href="styles.css?v=81">
   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- YouTube IFrame Player API: 비디오 숨김 + 음성만 커스텀 컨트롤로 재생 -->
   <script src="https://www.youtube.com/iframe_api"></script>
@@ -381,6 +381,7 @@
         <!-- 음성 재생 (모든 모드): 라이팅·드로잉은 듣고 적기/그리기용 -->
         <div id="mission-playback-section" class="mission-audio-card detail-block">
           <div class="mission-audio-label" id="mission-play-label">편지</div>
+          <div id="mission-play-questions" class="mission-play-questions" style="display:none" aria-label="질문 목록"></div>
           <p class="mission-playback-hint">음악을 들으면서 녹음해 보세요</p>
           <div class="mission-audio-controls">
             <button class="mission-audio-btn" id="mission-play-btn" onclick="toggleMissionPlayback()" title="재생">▶</button>
@@ -1768,6 +1769,6 @@
 
   <div id="share-file-hint-toast" class="share-file-hint-toast" aria-live="polite"></div>
 
-  <script src="app.js?v=84"></script>
+  <script src="app.js?v=85"></script>
 </body>
 </html>

@@ -3729,12 +3729,7 @@ function applyMissionRevealPhase() {
     if (mainActivityTopEl) mainActivityTopEl.style.display = '';
   } else if (currentMissionViewMode === 'relaxing') {
     // 릴렉싱 독립 모드: 별도 섹션 숨기고, 음원재생 칸 텍스트에 "[ 미션 ] " 접두사 + 미션 내용
-    const showRelaxingQuestions = currentMissionId === 'ABOUT ME' && hasLookingBack;
-    if (lookingBackWrap) lookingBackWrap.style.display = showRelaxingQuestions ? 'block' : 'none';
-    const lbCompleteBtnRelax = document.getElementById('looking-back-complete-btn');
-    if (lbCompleteBtnRelax) {
-      lbCompleteBtnRelax.style.display = showRelaxingQuestions ? 'none' : '';
-    }
+    if (lookingBackWrap) lookingBackWrap.style.display = 'none';
     if (mindTalkWrap)   mindTalkWrap.style.display   = 'none';
     if (relaxingWrap)   relaxingWrap.style.display   = 'none';
     // 릴렉싱 모드에서는 상단 설명(mainActivityTopEl)을 사용해 '활동 내용' 텍스트를 보여준다.
@@ -3881,6 +3876,7 @@ function applyMissionRevealPhase() {
       relaxAltSection.style.display = 'none';
     }
   }
+  updateAboutMePlaybackQuestions(mission);
   updateMissionAudioBoxButtons();
   updateMissionPhotoButton();
 }
@@ -4031,6 +4027,33 @@ function isMissionCompleteButtonVisible(btn) {
   }
 }
 
+function isAboutMeRelaxingMission() {
+  return partActivityMode === 'recording' &&
+    currentMissionViewMode === 'relaxing' &&
+    currentMissionId === 'ABOUT ME';
+}
+
+function updateAboutMePlaybackQuestions(mission) {
+  const el = document.getElementById('mission-play-questions');
+  if (!el) return;
+  if (!isAboutMeRelaxingMission()) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const qs = mission?.lookingBack;
+  if (!Array.isArray(qs) || !qs.length) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  el.style.display = 'block';
+  el.innerHTML = qs.map((q, i) =>
+    `<div class="lb-item"><span class="lb-num">${i + 1}</span><p class="lb-text">${esc(q)}</p></div>`
+  ).join('');
+}
+
 /** 레코딩 본활동에서 맨 위가 「편지」 음원 칸인지 (편지가 아니면 활동완료·대기 없이 녹음 칸 바로 사용) */
 function isRecordingFirstAudioLetterRow() {
   if (partActivityMode !== 'recording') return false;
@@ -4049,7 +4072,8 @@ function isRecordingFirstAudioLetterRow() {
 function getMissionRowUnlockState(hasMissionBox) {
   const playCompleteBtn = document.getElementById('mission-play-complete-btn');
   const missionCompleteBtn = document.getElementById('mission-mission-complete-btn');
-  const recordingNoLetterFirst = partActivityMode === 'recording' && !isRecordingFirstAudioLetterRow();
+  const recordingNoLetterFirst = partActivityMode === 'recording' &&
+    (isAboutMeRelaxingMission() || !isRecordingFirstAudioLetterRow());
   const playCompleteVisible = !recordingNoLetterFirst && isMissionCompleteButtonVisible(playCompleteBtn);
   const missionCompleteVisible = hasMissionBox && isMissionCompleteButtonVisible(missionCompleteBtn);
 
@@ -4175,8 +4199,8 @@ function updateMissionAudioBoxButtons() {
       if (recBtn.dataset.recCompleted === '1') {
         setComplete(recBtn, true);
       } else if (partActivityMode === 'recording') {
-        const canComplete = unlock.recordingRowUnlocked &&
-          (missionRecordingSavedThisSession || hasSavedRecordingForCurrentMission());
+        const canComplete = isAboutMeRelaxingMission() || (unlock.recordingRowUnlocked &&
+          (missionRecordingSavedThisSession || hasSavedRecordingForCurrentMission()));
         setEnabled(recBtn, canComplete);
         recBtn.textContent = '활동완료';
       } else {
