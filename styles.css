@@ -1648,9 +1648,13 @@ body {
   margin-top: 14px;
   margin-bottom: 0;
 }
-/* 재생 카드 안 활동완료 버튼은 숨김 (돌아보기-wrap의 버튼 하나만 사용) */
+/* 라이팅/드로잉 돌아보기: 재생 카드 안 활동완료 숨김 → wrap 하단 버튼 사용 */
 #mission-looking-back-wrap #mission-playback-section .activity-complete-btn {
   display: none;
+}
+/* 레코딩 돌아보기: 첫 음원 카드에 활동완료 표시 (녹음 칸은 편지 완료 후) */
+.recording-mode #mission-looking-back-wrap #mission-playback-section .activity-complete-btn {
+  display: block;
 }
 
 .mission-audio-card {

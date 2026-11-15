@@ -3501,6 +3501,7 @@ function setMissionRecordingControlsEnabled(enabled) {
 // 돌아보기 완료 버튼 클릭 → 마음톡 표시
 function completeLookingBack() {
   lookingBackActivityCompleted = true;
+  missionAudioBox1Completed = true;
   revealMindTalk();
   const btn = document.getElementById('looking-back-complete-btn');
   if (btn) {
@@ -3509,6 +3510,7 @@ function completeLookingBack() {
     btn.style.opacity = '0.5';
     btn.style.pointerEvents = 'none';
   }
+  updateMissionAudioBoxButtons();
   updateMissionPhotoButton();
 }
 
@@ -4122,8 +4124,20 @@ function updateMissionAudioBoxButtons() {
     if (lookingBackActivityCompleted) {
       setComplete(lbCompleteBtn, true);
     } else {
-      setEnabled(lbCompleteBtn, missionAudioBox1Completed);
+      // 돌아보기 첫 음원: ▶ 재생과 활동완료(이 버튼) 동시 활성 — CSS로 카드 안 버튼은 숨김
+      setEnabled(lbCompleteBtn, true);
       lbCompleteBtn.textContent = '활동완료';
+    }
+  }
+
+  // 돌아보기 레코딩: 첫 음원 칸에 활동완료 노출(아래 녹음 칸은 편지 완료 후 활성)
+  const playCompleteBtn = document.getElementById('mission-play-complete-btn');
+  if (playCompleteBtn && currentMissionViewMode === 'lookingback' && partActivityMode === 'recording') {
+    if (missionAudioBox1Completed) {
+      setComplete(playCompleteBtn, true);
+    } else {
+      setEnabled(playCompleteBtn, true);
+      playCompleteBtn.textContent = '활동완료';
     }
   }
 
