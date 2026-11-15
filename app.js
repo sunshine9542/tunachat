@@ -701,7 +701,7 @@ const WB_AUDIO_URLS = {
   WB123: 'https://youtu.be/KaqNNBO66Bg',
   WB124: 'https://youtu.be/kuNVhTNGYBo',
   WB125: 'https://youtu.be/HpNXqbv9hAQ',
-  WB126: 'https://www.youtube.com/watch?v=HpNXqbv9hAQ',
+  WB126: 'https://youtu.be/HpNXqbv9hAQ',
   WB130: 'https://youtu.be/ejjbyjxXUD0',
   WB131: 'https://youtu.be/gbFyjsRKJUc',
   WB132: 'https://youtu.be/Dbc0k-sckLQ',
@@ -709,7 +709,7 @@ const WB_AUDIO_URLS = {
   WB141: 'https://youtu.be/n6eHKFZOtug',
   WB142: 'https://youtu.be/vXFP_MltHOY',
   WB143: 'https://youtu.be/ZQ8p2A6IbZY',
-  WB144: 'https://www.youtube.com/watch?v=HpNXqbv9hAQ',
+  WB144: 'https://youtu.be/82wrfZ2AydQ',
   WB150: 'https://youtu.be/xvQ-EtxldM4',
   WB151: 'https://youtu.be/RB1ZUsSwaQ0',
   WB152: 'https://youtu.be/_qrdublXdGU',
@@ -3356,7 +3356,8 @@ async function openMissionDetail(missionId, thumb, startPhase) {
   currentRelaxingIdx = 0;
   if (typeof startPhase === 'number' && startPhase >= 1) {
     currentMissionViewMode = 'lookingback';
-    missionRevealPhase = 1;
+    const lbKey = getCompletedMissionKey(mode, part, missionId, 'lookingback', 0);
+    missionRevealPhase = getCompletedMissions().includes(lbKey) ? 2 : 1;
   } else {
     currentMissionViewMode = 'main';
     missionRevealPhase = 0;
@@ -3445,10 +3446,40 @@ async function openRelaxingMission(parentId, relaxingIdx, thumb) {
   navigate('mission-detail');
 }
 
-// 돌아보기 완료 버튼 클릭 → 마음톡 표시
-function completeLookingBack() {
+function getCurrentMissionActivityKey() {
+  return `${partActivityMode}_${partActivityPart}_${currentMissionId}_${currentMissionViewMode}_${currentRelaxingIdx ?? 0}`;
+}
+
+function getCurrentMissionRecording() {
+  return getRecordings().find(r =>
+    (r.mode || 'recording') === partActivityMode &&
+    (r.part ?? 1) === partActivityPart &&
+    (r.missionId || '') === currentMissionId &&
+    (r.viewMode || 'main') === currentMissionViewMode
+  ) || null;
+}
+
+function getCurrentMissionPhoto() {
+  const key = getCurrentMissionActivityKey();
+  return getMissionPhotos().find(p => getPhotoActivityKey(p) === key) || null;
+}
+
+function hasSavedRecordingForCurrentMission() {
+  return !!getCurrentMissionRecording();
+}
+
+function revealMindTalk() {
   missionRevealPhase = 2;
   applyMissionRevealPhase();
+  const wrap = document.getElementById('mission-mind-talk-wrap');
+  if (wrap && wrap.style.display !== 'none') {
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// 돌아보기 완료 버튼 클릭 → 마음톡 표시
+function completeLookingBack() {
+  revealMindTalk();
   const btn = document.getElementById('looking-back-complete-btn');
   if (btn) {
     btn.textContent = '완료 ✓';
@@ -4000,7 +4031,7 @@ function updateMissionAudioBoxButtons() {
       if (recBtn.dataset.recCompleted === '1') {
         setComplete(recBtn, true);
       } else if (partActivityMode === 'recording') {
-        const canComplete = missionRecordingSavedThisSession;
+        const canComplete = missionRecordingSavedThisSession || hasSavedRecordingForCurrentMission();
         setEnabled(recBtn, canComplete);
         recBtn.textContent = '활동완료';
       } else {
@@ -4013,7 +4044,7 @@ function updateMissionAudioBoxButtons() {
       if (recBtn.dataset.recCompleted === '1') {
         setComplete(recBtn, true);
       } else {
-        const canComplete = missionRecordingSavedThisSession;
+        const canComplete = missionRecordingSavedThisSession || hasSavedRecordingForCurrentMission();
         setEnabled(recBtn, canComplete);
         recBtn.textContent = '활동완료';
       }
@@ -4067,11 +4098,11 @@ function completeMissionRecordingBox() {
   let canComplete;
   if (hasMissionBox && partActivityMode === 'recording') {
     // 레코딩 본활동: **1 칸 활동완료 없음 → 녹음 저장 후에만 완료 가능
-    canComplete = missionRecordingSavedThisSession;
+    canComplete = missionRecordingSavedThisSession || hasSavedRecordingForCurrentMission();
   } else if (hasMissionBox) {
     canComplete = missionAudioBox2Completed;
   } else if (partActivityMode === 'recording') {
-    canComplete = missionRecordingSavedThisSession;
+    canComplete = missionRecordingSavedThisSession || hasSavedRecordingForCurrentMission();
   } else {
     canComplete = missionAudioBox1Completed;
   }
@@ -4086,8 +4117,7 @@ function completeMissionRecordingBox() {
   }
   // 레코딩 돌아보기: 녹음 완료 후 마음톡 표시
   if (partActivityMode === 'recording' && currentMissionViewMode === 'lookingback') {
-    missionRevealPhase = 2;
-    applyMissionRevealPhase();
+    revealMindTalk();
   }
   updateMissionPhotoButton();
 }
@@ -4128,6 +4158,16 @@ function onMissionPhotoCaptured(fileOrDataUrl) {
   }
 }
 
+function downloadMissionPhotoToDevice(dataUrl, mission) {
+  const safeTitle = (mission?.title || currentMissionId || 'photo').replace(/[^\w\-가-힣]+/g, '_');
+  runWithFileSaveHint(() => {
+    const a = document.createElement('a');
+    a.download = `떠나찾_사진_${safeTitle}.jpg`;
+    a.href = dataUrl;
+    a.click();
+  });
+}
+
 function saveMissionPhotoDataUrl(dataUrl) {
     const mission = MISSION_DATA[currentMissionId] || MISSION_DATA.LETTER;
     const photo = {
@@ -4144,6 +4184,7 @@ function saveMissionPhotoDataUrl(dataUrl) {
       thumb: currentMissionThumb || '',
     };
     saveMissionPhoto(photo);
+    downloadMissionPhotoToDevice(dataUrl, mission);
     if (currentScreen === 'my-contents') renderMyContents();
     showMissionPhotoPreview(dataUrl);
     updateMissionPhotoButton();
@@ -6572,9 +6613,11 @@ function recordSaveNow() {
   if (recordSaveContext === 'content') {
       saveContent();
       markRecordingSavedButtons();
+      runWithFileSaveHint(() => downloadLastRecordingFromContent());
   } else if (recordSaveContext === 'mission') {
       saveMissionRecordingForMyContents();
       markRecordingSavedButtons();
+      runWithFileSaveHint(() => downloadLastRecordingFromMission());
   }
 }
 
@@ -6582,9 +6625,11 @@ function recordConfirmSave() {
   if (recordSaveContext === 'content') {
       saveContent();
       markRecordingSavedButtons();
+      runWithFileSaveHint(() => downloadLastRecordingFromContent());
   } else if (recordSaveContext === 'mission') {
       saveMissionRecordingForMyContents();
       markRecordingSavedButtons();
+      runWithFileSaveHint(() => downloadLastRecordingFromMission());
   }
   closeRecordSaveOptions();
 }
@@ -6716,6 +6761,16 @@ function goToHome() {
 }
 
 function completeMissionActivity() {
+  if (currentMissionViewMode === 'lookingback') {
+  if (partActivityMode === 'recording') {
+      const recBtn = document.getElementById('mission-recording-complete-btn');
+      if (recBtn?.dataset.recCompleted === '1' || hasSavedRecordingForCurrentMission()) {
+        revealMindTalk();
+      }
+    } else {
+      revealMindTalk();
+    }
+  }
   saveLastSessionCompleted(partActivityMode, partActivityPart, currentMissionId, currentMissionViewMode, currentRelaxingIdx);
   markMissionCompleted();
   window.lastSaveFromMission = true;
@@ -7126,13 +7181,29 @@ function getShareLinkText() {
 }
 
 function shareMissionContent() {
+  if (partActivityMode === 'recording') {
+    const rec = getCurrentMissionRecording();
+    if (rec) {
+      window._returnAfterExternalShare = currentScreen || 'mission-detail';
+      shareRecordingToCafe(rec.id);
+      return;
+    }
+    alert('먼저 녹음을 저장해 주세요. 저장 후 공유하면 파일이 기기에도 저장됩니다.');
+    return;
+  }
+  const photo = getCurrentMissionPhoto();
+  if (photo) {
+    window._returnAfterExternalShare = currentScreen || 'mission-detail';
+    sharePhotoToCafe(photo.id);
+    return;
+  }
   const url = getShareLinkUrl();
   if (!url) {
     alert('공유 링크가 설정되지 않았습니다. 관리자 페이지에서 링크를 설정해 주세요.');
     return;
   }
-  if (!confirm(getShareLinkText())) return;
-  window.location.href = url;
+  if (!confirm((getShareLinkText() || '') + '\n\n(저장된 사진·녹음이 없어 카페만 열립니다.)')) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // 게시물 작성
@@ -8699,7 +8770,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // 브라우저/폰 뒤로가기 시 앱 내 이전 화면으로 이동 (앱에서 나가지 않음)
   window.addEventListener('popstate', function(e) {
-    const screenId = (e.state && e.state.screenId) ? e.state.screenId : 'recording-home';
+    let screenId = (e.state && e.state.screenId) ? e.state.screenId : null;
+    if (!screenId && window._returnAfterExternalShare) {
+      screenId = window._returnAfterExternalShare;
+      window._returnAfterExternalShare = null;
+    }
+    if (!screenId) screenId = 'recording-home';
     navigate(screenId, { skipPushState: true });
   });
   const partEl = document.getElementById('part-activity');
