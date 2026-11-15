@@ -4160,7 +4160,7 @@ function onMissionPhotoCaptured(fileOrDataUrl) {
 
 function downloadMissionPhotoToDevice(dataUrl, mission) {
   const safeTitle = (mission?.title || currentMissionId || 'photo').replace(/[^\w\-가-힣]+/g, '_');
-  runWithFileSaveHint(() => {
+  runDeviceSaveAfterAppSave(() => {
     const a = document.createElement('a');
     a.download = `떠나찾_사진_${safeTitle}.jpg`;
     a.href = dataUrl;
@@ -6522,6 +6522,17 @@ function confirmFileSaveHint() {
   }
 }
 
+/** 앱(내 콘텐츠) 저장 직후 기기 다운로드 — 별도 확인 팝업 없이 짧은 토스트만 */
+function runDeviceSaveAfterAppSave(task, message) {
+  const skip = !!getData(STORAGE_KEYS.fileSaveHintDisabled);
+  if (skip) {
+    task();
+    return;
+  }
+  const msg = message || '내 콘텐츠에 저장했어요. 잠시 후 기기에 파일로 저장됩니다.';
+  showShareFileHintThenRun(task, msg, 1600);
+}
+
 function downloadLastRecording(filenamePrefix) {
   const blob = window.lastRecordedBlob;
   if (!blob) {
@@ -6613,11 +6624,11 @@ function recordSaveNow() {
   if (recordSaveContext === 'content') {
       saveContent();
       markRecordingSavedButtons();
-      runWithFileSaveHint(() => downloadLastRecordingFromContent());
+      runDeviceSaveAfterAppSave(() => downloadLastRecordingFromContent());
   } else if (recordSaveContext === 'mission') {
       saveMissionRecordingForMyContents();
       markRecordingSavedButtons();
-      runWithFileSaveHint(() => downloadLastRecordingFromMission());
+      runDeviceSaveAfterAppSave(() => downloadLastRecordingFromMission());
   }
 }
 
@@ -6625,11 +6636,11 @@ function recordConfirmSave() {
   if (recordSaveContext === 'content') {
       saveContent();
       markRecordingSavedButtons();
-      runWithFileSaveHint(() => downloadLastRecordingFromContent());
+      runDeviceSaveAfterAppSave(() => downloadLastRecordingFromContent());
   } else if (recordSaveContext === 'mission') {
       saveMissionRecordingForMyContents();
       markRecordingSavedButtons();
-      runWithFileSaveHint(() => downloadLastRecordingFromMission());
+      runDeviceSaveAfterAppSave(() => downloadLastRecordingFromMission());
   }
   closeRecordSaveOptions();
 }
@@ -6762,7 +6773,7 @@ function goToHome() {
 
 function completeMissionActivity() {
   if (currentMissionViewMode === 'lookingback') {
-  if (partActivityMode === 'recording') {
+    if (partActivityMode === 'recording') {
       const recBtn = document.getElementById('mission-recording-complete-btn');
       if (recBtn?.dataset.recCompleted === '1' || hasSavedRecordingForCurrentMission()) {
         revealMindTalk();
@@ -7160,8 +7171,9 @@ function shareRecordingToCafe(recordingId) {
   showShareFileHintThenRun(doDownloadAndOpen);
 }
 
-function showShareFileHintThenRun(callback) {
-  const msg = '공유하기 위해 우선 파일을 내 기기에 저장합니다';
+function showShareFileHintThenRun(callback, message, displayMs) {
+  const msg = message || '공유하기 위해 우선 파일을 내 기기에 저장합니다';
+  const waitMs = displayMs == null ? 2200 : displayMs;
   const el = document.getElementById('share-file-hint-toast');
   if (el) {
     el.textContent = msg;
@@ -7169,7 +7181,7 @@ function showShareFileHintThenRun(callback) {
     setTimeout(() => {
       el.classList.remove('show');
       setTimeout(callback, 350);
-    }, 2200);
+    }, waitMs);
   } else {
     callback();
   }
