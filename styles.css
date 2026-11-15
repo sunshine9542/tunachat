@@ -1740,9 +1740,9 @@ body {
   align-items: center;
   gap: 8px;
   position: fixed;
-  top: 50%;
+  top: 22%;
   right: 12px;
-  transform: translateY(-50%);
+  transform: none;
   z-index: 100;
   padding: 12px 10px;
   border-radius: 12px;

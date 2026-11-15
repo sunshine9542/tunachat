@@ -3477,6 +3477,27 @@ function revealMindTalk() {
   }
 }
 
+function recordingMindTalkEligible() {
+  if (partActivityMode !== 'recording') return false;
+  const recBtn = document.getElementById('mission-recording-complete-btn');
+  const recDone = recBtn?.dataset.recCompleted === '1' || hasSavedRecordingForCurrentMission();
+  if (currentMissionViewMode === 'lookingback') return recDone;
+  if (currentMissionViewMode === 'main') {
+    return recDone && (missionAudioBox1Completed || isCurrentMissionCompleted());
+  }
+  return false;
+}
+
+function setMissionRecordingControlsEnabled(enabled) {
+  ['mission-record-btn', 'mission-pause-btn', 'mission-stop-btn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !enabled;
+    el.style.opacity = enabled ? '' : '0.5';
+    el.style.pointerEvents = enabled ? '' : 'none';
+  });
+}
+
 // 돌아보기 완료 버튼 클릭 → 마음톡 표시
 function completeLookingBack() {
   revealMindTalk();
@@ -3737,9 +3758,16 @@ function applyMissionRevealPhase() {
       }
     }
   } else {
-    // 본활동 독립 모드: 돌아보기·마음톡·릴렉싱 숨김, [ 미션 ] 박스 표시
+    // 본활동 독립 모드: 돌아보기·릴렉싱 숨김. 레코딩은 녹음 완료 후 마음톡 표시
     if (lookingBackWrap) lookingBackWrap.style.display = 'none';
-    if (mindTalkWrap)   mindTalkWrap.style.display   = 'none';
+  if (mindTalkWrap) {
+      const showRecMindTalk = partActivityMode === 'recording' && hasMindTalk && missionRevealPhase >= 2;
+      mindTalkWrap.style.display = showRecMindTalk ? 'block' : 'none';
+      const mindTalkEl = document.getElementById('mission-mind-talk');
+      if (showRecMindTalk && mindTalkEl && mission.mindTalk) {
+        mindTalkEl.innerHTML = `${mission.mindTalk}${MIND_TALK_ATTRIBUTION}`;
+      }
+    }
     if (relaxingWrap)   relaxingWrap.style.display   = 'none';
     // 레코딩 본활동의 **0 링크(편지) 제목: "편지 왔어요~" (큰따옴표 포함)
     // 라이팅 STAR II: 편지 왔어요가 아니라 시낭송 라벨을 사용
@@ -4115,8 +4143,8 @@ function completeMissionRecordingBox() {
     recBtn.style.opacity = '0.5';
     recBtn.style.pointerEvents = 'none';
   }
-  // 레코딩 돌아보기: 녹음 완료 후 마음톡 표시
-  if (partActivityMode === 'recording' && currentMissionViewMode === 'lookingback') {
+  // 레코딩: 녹음 활동완료 후 마음톡 표시
+  if (partActivityMode === 'recording') {
     revealMindTalk();
   }
   updateMissionPhotoButton();
@@ -4438,6 +4466,9 @@ function renderMissionDetail() {
   const themeColors = { LETTER: '#FCE4EC', 'LOOKING BACK': '#E8E8F5', FOND: '#FCE4EC', DISLIKE: '#FFF8E1', 'ABOUT ME': '#E8F5E9', 'ABOUT ME (6)': '#E8F5E9', 'TIME AND MONEY': '#F5F0E8', PARTNER: '#E3F2FD', 'MY SIDE': '#EFEBE9', VOICE: '#E8F5E9', MUSIC: '#E3F2FD', Favorite: '#E8F5E9', SINKHOLE: '#E8E8E8', RETOUCH: '#F5F5F5', ALONG: '#E8F5E9', WORDS: '#E8F5E9', GIFT: '#E8F5E9', HOPE: '#FFF3E0', TRIP: '#E8F5E9', TRIP_D: '#E8F5E9', FLEX: '#FFF9C4', PAINT: '#FCE4EC', COLOR: '#E3F2FD', ONE: '#FFF8E1', JANUS: '#E8E8F5', IF: '#E0F2F1', ROAD: '#FFE0B2', FACE: '#F5F0E8', RAIN: '#B3E5FC', ANIMAL: '#C8E6C9', NETWORK: '#E1BEE7', THINK: '#F5F5F5', LOOK: '#E8E8E8', NEWME: '#FFF3E0' };
   if (thumbRow) thumbRow.style.background = themeColors[mission.theme] || '#F5F5F5';
 
+  if (partActivityMode === 'recording' && isCurrentMissionCompleted()) {
+    missionRevealPhase = Math.max(missionRevealPhase, 2);
+  }
   applyMissionRevealPhase();
   if (isCurrentMissionCompleted()) {
     setMissionDetailCompletedState(true);
@@ -6772,15 +6803,10 @@ function goToHome() {
 }
 
 function completeMissionActivity() {
-  if (currentMissionViewMode === 'lookingback') {
-    if (partActivityMode === 'recording') {
-      const recBtn = document.getElementById('mission-recording-complete-btn');
-      if (recBtn?.dataset.recCompleted === '1' || hasSavedRecordingForCurrentMission()) {
-        revealMindTalk();
-      }
-    } else {
-      revealMindTalk();
-    }
+  if (partActivityMode === 'recording') {
+    if (recordingMindTalkEligible()) revealMindTalk();
+  } else if (currentMissionViewMode === 'lookingback') {
+    revealMindTalk();
   }
   saveLastSessionCompleted(partActivityMode, partActivityPart, currentMissionId, currentMissionViewMode, currentRelaxingIdx);
   markMissionCompleted();
@@ -6818,6 +6844,9 @@ function setMissionDetailCompletedState(completed) {
         photoBtn.style.pointerEvents = 'none';
       }
     }
+    if (partActivityMode === 'recording') {
+      setMissionRecordingControlsEnabled(false);
+    }
     audioCompleteBtns.forEach(btn => {
       btn.disabled = true;
       btn.style.opacity = '0.5';
@@ -6837,6 +6866,11 @@ function setMissionDetailCompletedState(completed) {
     }
   } else {
     if (photoBtn) updateMissionPhotoButton();
+    if (partActivityMode === 'recording') {
+      setMissionRecordingControlsEnabled(true);
+      const recordBtn = document.getElementById('mission-record-btn');
+      if (recordBtn) recordBtn.textContent = '●';
+    }
     audioCompleteBtns.forEach(btn => {
       btn.disabled = false;
       btn.style.opacity = '';
