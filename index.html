@@ -2,6 +2,20 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <!-- GitHub Pages: /write1 등 깊은 경로에서도 정적 리소스·앱 JS가 루트 기준으로 로드되도록 -->
+  <base href="/">
+  <script>
+  (function () {
+    try {
+      var key = 'tunachat_spa_path';
+      var p = sessionStorage.getItem(key);
+      if (p) {
+        sessionStorage.removeItem(key);
+        history.replaceState(null, '', p);
+      }
+    } catch (e) {}
+  })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>떠나찾 - 나를 찾아 떠나는 힐링 레코딩</title>
   <link rel="stylesheet" href="디자인_리소스/design-tokens.css?v=31">

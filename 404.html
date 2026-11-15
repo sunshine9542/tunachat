@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>떠나찾</title>
+  <script>
+  (function () {
+    var key = 'tunachat_spa_path';
+    var path = location.pathname + location.search + location.hash;
+    if (path && path !== '/') {
+      try {
+        sessionStorage.setItem(key, path);
+      } catch (e) {}
+    }
+    location.replace('/');
+  })();
+  </script>
+</head>
+<body></body>
+</html>
