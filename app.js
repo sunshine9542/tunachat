@@ -926,7 +926,7 @@ const DEFAULT_RECORDING_MISSION_AUDIO = {
   ONCE:            { entries: [{ url: getRbUrl('RB320') }, { url: getRbUrl('RB321') }].filter(e => e.url), lookingBackUrls: [getRbUrl('RB322')].filter(Boolean), relaxingUrls: [getRbUrl('RB323')].filter(Boolean) },
   SUPPORT:         { entries: [{ url: getRbUrl('RB330') }, { url: getRbUrl('RB331') }].filter(e => e.url), lookingBackUrls: [getRbUrl('RB332')].filter(Boolean) },
   LETTER:          { entries: [{ url: getRbUrl('RB340') }, { url: getRbUrl('RB341') }].filter(e => e.url), lookingBackUrls: [getRbUrl('RB342')].filter(Boolean), relaxingUrls: [getRbUrl('RB343')].filter(Boolean) },
-  'ABOUT ME':      { entries: [{ url: getRbUrl('RB343') }].filter(e => e.url) },
+  'ABOUT ME':      { relaxingUrls: [getRbUrl('RB343')].filter(Boolean) },
   'MY SIDE':       { entries: [{ url: getRbUrl('RB410') }, { url: getRbUrl('RB411') }].filter(e => e.url), lookingBackUrls: [getRbUrl('RB412')].filter(Boolean) },
   "IT'S ME":       { entries: [{ url: getRbUrl('RB420') }, { url: getRbUrl('RB421') }].filter(e => e.url), lookingBackUrls: [getRbUrl('RB422')].filter(Boolean) },
 };
@@ -1192,15 +1192,11 @@ function bootstrapRecordingMissionAudio() {
       const mission = MISSION_DATA[missionId];
       const mainActivityText = mission?.mainActivity;
       let entries = (cfg.entries || []).map(e => (typeof e === 'string' ? { url: e } : e)).filter(e => e && e.url);
-      // ABOUT ME(6): 릴렉싱 구조 — 편지 박스 없이 미션 박스에만 음원 연결
+      // ABOUT ME(6): 독립 릴렉싱 — relaxingUrls만 사용
       if (missionId === 'ABOUT ME') {
-        // entries[0]을 미션 박스(entries[1])로 이동, entries[0]은 비움
-        const missionUrl = entries[0]?.url || '';
-        entries = [
-          { url: '', text: '' },
-          { url: missionUrl, text: mainActivityText || '' },
-        ];
-        data[missionId] = { entries };
+        const relaxingUrls = (cfg.relaxingUrls || []).filter(Boolean);
+        if (!relaxingUrls.length) return;
+        data[missionId] = { relaxingUrls };
         return;
       }
       if (entries.length > 0) {
@@ -2689,7 +2685,23 @@ const MISSION_DATA = {
   // === 공통/기타 ===
   VOICE: { title: 'VOICE - 나의 목소리', theme: 'VOICE', playLabel: '편지', mainActivity: '발성연습하며 내 목소리와 친해지기. 좋아하는 시나 책의 구절 낭송 또는 노래 부르기', lookingBack: ['글을 소리내서 읽어보니 어때? 눈으로만 볼 때랑 달라?', '어떤 책을 골랐어? 왜 그 책을 골랐어?', '녹음한 걸 한번 들어볼래? 들어보니 어떤 기분이 들어?'], mindTalk: '목소리 좋은 사람들도 예전에는 자신의 목소리를 콤플렉스로 여긴 적이 있었다고 해요. 목소리도 나의 일부이니 싫어하지 말고 사랑해 주세요. 사람마다 목소리는 다 달라요. 내 목소리만의 색깔을 찾아보아요.', relaxingMission: null },
   'LOOKING BACK': { title: 'LOOKING BACK', theme: 'LOOKING BACK', playLabel: '질문', mainActivity: '마음 톡 활동을 끝낸 후에 보세요! 내 답변 되돌아보며 나를 탐구하기', lookingBack: ['고맙다는 편지를 써보니 어떤 기분이 들었어?'], mindTalk: null, relaxingMission: null },
-  'ABOUT ME': { title: 'RELAXING - ABOUT ME(6)', theme: 'ABOUT ME (6)', playLabel: '질문', mainActivity: '나에 대한 간단한 질문들에 대답해보기', lookingBack: ['좋아하는 음료와 그 이유.'], mindTalk: null, relaxingMission: null },
+  'ABOUT ME': {
+    title: 'RELAXING - ABOUT ME(6)',
+    theme: 'ABOUT ME (6)',
+    koreanTitle: '나에 대해',
+    playLabel: '질문',
+    mainActivity: '나에 대한 간단한 질문들에 대답해보기',
+    lookingBack: [
+      '좋아하는 음료와 그 이유는?',
+      '요즘 나를 가장 편하게 해 주는 것은?',
+      '나를 한 단어로 표현한다면?',
+      '어릴 때 꿈꿨던 나의 모습은?',
+      '지금 나에게 꼭 해주고 싶은 말은?',
+      '10년 뒤의 나는 어떤 사람이면 좋을까?',
+    ],
+    mindTalk: null,
+    relaxingMission: 'ABOUT ME 나에 대해 - 나에 대한 간단한 질문들에 대답해보기',
+  },
 };
 
 // DEFAULT_MISSION_AUDIO / DEFAULT_RECORDING_MISSION_AUDIO / DEFAULT_DRAWING_MISSION_AUDIO의
@@ -2765,7 +2777,7 @@ const PART_ACTIVITIES = {
       { label: 'LOOKING BACK', lookingBackFor: 'SUPPORT', style: 'card', bg: '#5A9A69', thumb: 'RB332_a.png' },
       { label: 'LETTER',       style: 'card', bg: '#E8D8D0', thumb: 'RB341_a.png' },
       { label: 'LOOKING BACK', lookingBackFor: 'LETTER',  style: 'card', bg: '#6888C8', thumb: 'RB342_a.png' },
-      { label: 'ABOUT ME', sub: '(6)', style: 'card', bg: '#7ABCB0', thumb: 'RB343_a.png' },
+      { label: 'ABOUT ME', sub: '(6)', relaxingFor: 'ABOUT ME', relaxingIdx: 0, style: 'card', bg: '#7ABCB0', thumb: 'RB343_a.png' },
       { label: '', style: 'current', bg: '#FCE4EC', icon: 'grid' },
     ],
     4: [
@@ -3717,7 +3729,12 @@ function applyMissionRevealPhase() {
     if (mainActivityTopEl) mainActivityTopEl.style.display = '';
   } else if (currentMissionViewMode === 'relaxing') {
     // 릴렉싱 독립 모드: 별도 섹션 숨기고, 음원재생 칸 텍스트에 "[ 미션 ] " 접두사 + 미션 내용
-    if (lookingBackWrap) lookingBackWrap.style.display = 'none';
+    const showRelaxingQuestions = currentMissionId === 'ABOUT ME' && hasLookingBack;
+    if (lookingBackWrap) lookingBackWrap.style.display = showRelaxingQuestions ? 'block' : 'none';
+    const lbCompleteBtnRelax = document.getElementById('looking-back-complete-btn');
+    if (lbCompleteBtnRelax) {
+      lbCompleteBtnRelax.style.display = showRelaxingQuestions ? 'none' : '';
+    }
     if (mindTalkWrap)   mindTalkWrap.style.display   = 'none';
     if (relaxingWrap)   relaxingWrap.style.display   = 'none';
     // 릴렉싱 모드에서는 상단 설명(mainActivityTopEl)을 사용해 '활동 내용' 텍스트를 보여준다.
@@ -3788,13 +3805,7 @@ function applyMissionRevealPhase() {
     const missionMissionLabel  = document.getElementById('mission-mission-play-label');
     // WB310(GIFT): 편지 2개 + 미션 1개(음원)
     const isGiftTwoLetters = partActivityMode === 'writing' && currentMissionId === 'GIFT';
-    // ABOUT ME(6): 릴렉싱 구조 — 편지 박스 숨기고 미션 박스에 음원 연결
-    const isAboutMeRelaxing = partActivityMode === 'recording' && currentMissionId === 'ABOUT ME';
-    if (isAboutMeRelaxing) {
-      if (playbackSection) playbackSection.style.display = 'none';
-    } else {
-      if (playbackSection) playbackSection.style.display = '';
-    }
+    if (playbackSection) playbackSection.style.display = '';
     if (missionMissionSection) missionMissionSection.style.display = 'block';
     if (isGiftTwoLetters) {
       // 두 번째 박스는 entries[1]을 재생하므로, 라벨도 "편지 왔어요~"로 맞춘다.
@@ -3893,8 +3904,10 @@ function isAllMissionActivitiesCompleted() {
   const recBtn = document.getElementById('mission-recording-complete-btn');
   if (hasRecBox) {
     if (partActivityMode === 'recording') {
-      // 레코딩 본활동: **1 활동완료 없음 → 편지 완료 + 녹음 저장 후 활동완료만 확인
-      return missionAudioBox1Completed && recBtn?.dataset.recCompleted === '1';
+      if (isRecordingFirstAudioLetterRow()) {
+        return missionAudioBox1Completed && recBtn?.dataset.recCompleted === '1';
+      }
+      return recBtn?.dataset.recCompleted === '1';
     }
     return missionAudioBox1Completed && missionAudioBox2Completed && recBtn?.dataset.recCompleted === '1';
   }
