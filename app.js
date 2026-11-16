@@ -1933,6 +1933,36 @@ function navigateBack() {
   else if (currentScreen === 'my-activity') navigate('recording-home');
 }
 
+let frontDoorTimer = null;
+
+function savedAccountNickname() {
+  const profile = getAuthProfile();
+  return (profile && profile.nickname) ? String(profile.nickname).trim() : '';
+}
+
+function isFirstAppVisitToday() {
+  const today = getTodayYmd();
+  return !getAccessLog().some(function (x) { return x && x.date === today; });
+}
+
+function hideSplashOverlay() {
+  if (frontDoorTimer) {
+    clearTimeout(frontDoorTimer);
+    frontDoorTimer = null;
+  }
+  try { stopAllIntroAudios(); } catch (_) {}
+  const splashEl = document.getElementById('splash-overlay');
+  if (splashEl) splashEl.remove();
+}
+
+function ensureReturningSession() {
+  if (getCurrentSession()) return;
+  const name = savedAccountNickname();
+  if (!name) return;
+  setCurrentSession({ id: name });
+  updateLoginInfoUi();
+}
+
 function goToHomeFromSplash() {
   try {
   const consentGiven = getData(STORAGE_KEYS.storageConsentGiven);
@@ -1947,9 +1977,13 @@ function goToHomeFromSplash() {
   } catch (e) {
     console.warn('[goToHomeFromSplash] storage 설정 실패', e);
   }
-  const splashEl = document.getElementById('splash-overlay');
-  if (splashEl) splashEl.remove();
-  // 스플래시가 끝나면 닉네임/비밀번호(선택) 진입 화면을 보여준다
+  hideSplashOverlay();
+  showAuthOverlay();
+}
+
+function autoLeaveSplash() {
+  try { setData(STORAGE_KEYS.storageConsentGiven, true); } catch (_) {}
+  hideSplashOverlay();
   showAuthOverlay();
 }
 
@@ -8973,6 +9007,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentUserId = sess.id;
   }
 
+  // 오늘 첫 접속인지는 기록을 남기기 전에 판단한다.
+  const firstAppVisitToday = isFirstAppVisitToday();
+  const accountNickname = savedAccountNickname();
   // 일별 접속 기록 (활동 통계용)
   try { appendAccessLog(); } catch (_) {}
 
@@ -9080,9 +9117,18 @@ document.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
 
-  // 스플래시 시그널 및 체크박스 초기화
+  // 당일 첫 접속만 대문 1초 후 인사. 같은 날 다시 들어오면 목적 페이지로 바로 간다.
   initSplashSkipCheckbox();
-  playSignalOnSplash();
+  if (firstAppVisitToday) {
+    playSignalOnSplash();
+    frontDoorTimer = setTimeout(autoLeaveSplash, 1000);
+  } else if (!accountNickname) {
+    hideSplashOverlay();
+    showAuthOverlay();
+  } else {
+    hideSplashOverlay();
+    ensureReturningSession();
+  }
 
   // 맨 위로 가기 버튼
   const appEl = document.getElementById('app');

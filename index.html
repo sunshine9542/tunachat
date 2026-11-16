@@ -14,12 +14,22 @@
         history.replaceState(null, '', p);
       }
     } catch (e) {}
+    try {
+      var log = JSON.parse(localStorage.getItem('contique_access_log') || 'null');
+      var acc = JSON.parse(localStorage.getItem('contique_user_account') || 'null');
+      var d = new Date();
+      var today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var seen = Array.isArray(log) && log.some(function (x) { return x && x.date === today; });
+      var nick = acc && String(acc.nickname || acc.id || '').trim();
+      if (seen && nick) document.documentElement.classList.add('skip-front-door');
+    } catch (e) {}
   })();
   </script>
+  <style>html.skip-front-door #splash-overlay{display:none!important}</style>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>떠나찾 - 나를 찾아 떠나는 힐링 레코딩</title>
   <link rel="stylesheet" href="디자인_리소스/design-tokens.css?v=31">
-  <link rel="stylesheet" href="styles.css?v=81">
+  <link rel="stylesheet" href="styles.css?v=82">
   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- YouTube IFrame Player API: 비디오 숨김 + 음성만 커스텀 컨트롤로 재생 -->
   <script src="https://www.youtube.com/iframe_api"></script>
@@ -1769,6 +1779,6 @@
 
   <div id="share-file-hint-toast" class="share-file-hint-toast" aria-live="polite"></div>
 
-  <script src="app.js?v=85"></script>
+  <script src="app.js?v=86"></script>
 </body>
 </html>

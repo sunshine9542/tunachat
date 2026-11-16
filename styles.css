@@ -146,9 +146,9 @@ body {
   inset: 0;
   z-index: 9998;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 12px 16px 20px;
+  padding: 36px 16px 20px;
   background: radial-gradient(circle at top, rgba(255,255,255,0.55), rgba(0,0,0,0.35));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -6685,6 +6685,13 @@ body {
     position: fixed;
     inset: 0;
     border-radius: 0;
+  }
+  .auth-overlay {
+    position: fixed;
+    inset: 0;
+    border-radius: 0;
+    align-items: flex-start;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 24px);
   }
   .splash-img-area {
     align-items: flex-start;
