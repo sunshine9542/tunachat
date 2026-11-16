@@ -60,19 +60,8 @@ const SPLASH_POSTERS = [
 
 let currentSplashIndex = 0;
 
-// 모드별 쿠폰 파일 경로 (정적 txt 파일)
-const MODE_COUPON_FILES = {
-  writing: 'coupons/writing.txt',
-  drawing: 'coupons/drawing.txt',
-  recording: 'coupons/recording.txt',
-};
-
-// 런타임에 로드된 쿠폰 코드 캐시
-const MODE_COUPON_CACHE = {
-  writing: null,
-  drawing: null,
-  recording: null,
-};
+// 쿠폰 번호 목록은 앱에 두지 않는다. 카페24 PHP가 번호 하나만 검사한다.
+const COUPON_API_URL = 'https://playio.net/coupon-api/index.php';
 
 // ── 간단한 로그인/회원 관리 (이 기기 전용) ───────────────────────────────
 function getUserAccount() {
@@ -186,43 +175,41 @@ function getModeCouponState() {
   return (data && typeof data === 'object') ? data : {};
 }
 
-function setModeCouponUnlocked(mode) {
+function getModeCouponToken(mode) {
+  const saved = getModeCouponState()[mode];
+  return typeof saved === 'string' && saved.length >= 16 ? saved : '';
+}
+
+function setModeCouponToken(mode, token) {
   const cur = getModeCouponState();
-  cur[mode] = true;
+  cur[mode] = token;
   setData(STORAGE_KEYS.modeCoupons, cur);
 }
 
-async function loadModeCoupons(mode) {
-  if (!mode || MODE_COUPON_CACHE[mode]) return;
-  const file = MODE_COUPON_FILES[mode];
-  if (!file) {
-    MODE_COUPON_CACHE[mode] = new Set();
-    return;
+function clearModeCouponToken(mode) {
+  const cur = getModeCouponState();
+  delete cur[mode];
+  setData(STORAGE_KEYS.modeCoupons, cur);
+}
+
+function couponModeLabel(mode) {
+  if (mode === 'writing') return '라이팅';
+  if (mode === 'drawing') return '드로잉';
+  if (mode === 'recording') return '레코딩';
+  return mode || '';
+}
+
+async function requestCouponApi(body) {
+  const res = await fetch(COUPON_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => null);
+  if (!data || typeof data !== 'object') {
+    throw new Error('bad-response');
   }
-  try {
-    const res = await fetch(file, { cache: 'no-store' });
-    if (!res.ok) {
-      console.warn('[쿠폰] 파일을 불러오지 못했어요:', file, res.status);
-      MODE_COUPON_CACHE[mode] = new Set();
-      return;
-    }
-    const text = await res.text();
-    // 한 줄에 "코드 / MODE" 처럼 모드명이 함께 적혀 있어도
-    // 앞쪽의 코드만 쿠폰으로 인식하도록 파싱
-    const codes = text
-      .split(/\r?\n/)
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(s => {
-        const beforeSlash = s.split('/')[0] || '';
-        return beforeSlash.trim().toUpperCase();
-      })
-      .filter(Boolean);
-    MODE_COUPON_CACHE[mode] = new Set(codes);
-  } catch (e) {
-    console.warn('[쿠폰] 로드 중 오류:', mode, e);
-    MODE_COUPON_CACHE[mode] = new Set();
-  }
+  return data;
 }
 
 function getAuthProfile() {
@@ -1518,38 +1505,54 @@ async function ensureModeCouponUnlocked(mode, part, missionId, viewMode, relaxin
   // 무료 구간(각 모드 Part1/2의 1·2번째 콘텐츠 등)은 쿠폰 없이 사용 가능
   if (isFreeMission(mode, part, missionId, viewMode, relaxingIdx)) return true;
 
-  const state = getModeCouponState();
-  if (state[mode]) return true;
-
-  await loadModeCoupons(mode);
-  const set = MODE_COUPON_CACHE[mode] || new Set();
-  if (!set.size) {
-    showCouponToast('쿠폰 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', true);
-    return false;
+  const label = couponModeLabel(mode);
+  const savedToken = getModeCouponToken(mode);
+  if (savedToken) {
+    try {
+      const verified = await requestCouponApi({ action: 'verify', token: savedToken });
+      if (verified.ok && verified.mode === mode) return true;
+      clearModeCouponToken(mode);
+    } catch (e) {
+      showCouponToast('쿠폰 확인 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.', true);
+      return false;
+    }
   }
-  const label = mode === 'writing' ? '라이팅'
-    : mode === 'drawing' ? '드로잉'
-    : mode === 'recording' ? '레코딩'
-    : mode;
 
   let errorMessage = '';
   for (;;) {
     const code = await showCouponModal(label + ' 모드', errorMessage);
     if (code === null) return false;
     const trimmed = (code || '').trim();
-    const normalized = trimmed.toUpperCase();
     if (!trimmed) {
       errorMessage = '쿠폰 번호를 입력해 주세요.';
       continue;
     }
-    if (!set.has(normalized)) {
-      errorMessage = '쿠폰 번호가 올바르지 않아요. 다시 확인해 주세요.';
+    let result;
+    try {
+      result = await requestCouponApi({ action: 'redeem', mode: mode, code: trimmed });
+    } catch (e) {
+      errorMessage = '쿠폰 확인 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';
       continue;
     }
-    setModeCouponUnlocked(mode);
-    closeCouponModal();
-    showCouponToast(label + ' 모드의 모든 콘텐츠가 열렸어요!', false);
-    return true;
+    if (result.status === 'rate_limited') {
+      errorMessage = '시도 횟수가 많아요. 잠시 후 다시 입력해 주세요.';
+      continue;
+    }
+    if (result.ok && result.token && result.mode === mode) {
+      setModeCouponToken(mode, result.token);
+      closeCouponModal();
+      showCouponToast(label + ' 모드의 모든 콘텐츠가 열렸어요!', false);
+      return true;
+    }
+    if (result.status === 'used') {
+      errorMessage = '이미 사용된 쿠폰이에요.';
+      continue;
+    }
+    if (result.status === 'wrong_mode') {
+      errorMessage = couponModeLabel(result.mode) + ' 모드 쿠폰이에요. 이 모드 쿠폰을 입력해 주세요.';
+      continue;
+    }
+    errorMessage = '쿠폰 번호가 올바르지 않아요. 다시 확인해 주세요.';
   }
 }
 
@@ -6551,7 +6554,7 @@ function renderPartActivity() {
           <span class="activity-thumb-caption__line2">${escHtml(a.sub)}</span>
         </div>` : '';
     const state = getModeCouponState();
-    const isUnlocked = !!(state && state[partActivityMode]);
+    const isUnlocked = typeof (state && state[partActivityMode]) === 'string';
     let showFreeBadge = false;
     if (!isUnlocked) {
       // 릴렉싱 카드: (writing) 특정 카드 라벨은 무료 배지 표시
